@@ -21,7 +21,6 @@ class TaskStatus(str, Enum):
 class Task(BaseModel):
     task_id:   str
     task_type: TaskType
-    agent_description: str
     prompt:    str
     status:    TaskStatus = TaskStatus.PENDING
     model:     str = "gpt-4.1-nano"
