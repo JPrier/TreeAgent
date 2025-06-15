@@ -10,14 +10,15 @@ class TaskType(str, Enum):
     DOCUMENT         = "document"
 
 class TaskStatus(str, Enum):
-    PENDING            = "pending"
-    IN_PROGRESS        = "in_progress"
-    PENDING_VALIDATION = "pending_validation"
-    PENDING_USER_REVIEW= "pending_user_review"
-    COMPLETED          = "completed"
-    BLOCKED            = "blocked"
+    PENDING             = "pending"
+    IN_PROGRESS         = "in_progress"
+    PENDING_VALIDATION  = "pending_validation"
+    PENDING_USER_REVIEW = "pending_user_review"
+    COMPLETED           = "completed"
+    BLOCKED             = "blocked"
+    FAILED              = "failed"
 
-class TaskModel(BaseModel):
+class Task(BaseModel):
     task_id:   str
     task_type: TaskType
     agent_description: str
