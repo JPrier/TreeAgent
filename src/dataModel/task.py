@@ -1,5 +1,7 @@
 from enum import Enum
 from pydantic import BaseModel
+from typing import Optional, Dict, Any
+from .model import Model
 
 class TaskType(str, Enum):
     IMPLEMENT        = "implement"
@@ -23,7 +25,8 @@ class Task(BaseModel):
     task_type: TaskType
     prompt:    str
     status:    TaskStatus = TaskStatus.PENDING
-    model:     str = "gpt-4.1-nano"
+    model:     Model = Model()
+    tools:     Optional[Dict[str, Any]] = None  # Available MCP tools for this task
 
     class Config:
         use_enum_values = True

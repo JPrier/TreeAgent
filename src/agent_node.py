@@ -1,22 +1,31 @@
+from src.modelAccessors.base_accessor import BaseModelAccessor
+from src.dataModel.task import Task
 from dataBuilders.prompt_builder import PromptBuilder
-from src.modelAccessors.openai_accessor import OpenAIAccessor
-from src.dataModel.task import Task, TaskStatus
-from src.dataModel.model_response import ModelResponse, ModelResponseType
 
 class AgentNode:
-    def __init__(self, agent_id):
+    def __init__(self, agent_id: str, accessor: BaseModelAccessor):
         self.agent_id = agent_id
-        self.accessor = OpenAIAccessor()
+        self.accessor = accessor
         self.prompt_builder = PromptBuilder()
 
     def __repr__(self):
         return f"AgentNode(id={self.agent_id})"
     
     def execute_task(self, task: Task):
+        """
+        Execute a task using the injected model accessor.
+        The accessor handles whether the model supports direct MCP execution or needs simulation.
+        """
         system_prompt = self.prompt_builder.build_system_prompt(task)
         user_prompt = self.prompt_builder.build(task)
-
-        return self.accessor.prompt_model(task.model, system_prompt, user_prompt)
+        
+        # Always use execute_task_with_tools - the accessor handles MCP abstraction
+        return self.accessor.execute_task_with_tools(
+            model=task.model.name,
+            system_prompt=system_prompt,
+            user_prompt=user_prompt,
+            tools=task.tools
+        )
     
     # def handle_response(self, task: Task, response):
     #     """

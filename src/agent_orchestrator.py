@@ -2,6 +2,10 @@ from pydantic import BaseModel
 from dataModel.model_response import ModelResponse, ModelResponseType
 from src.agent_node import AgentNode
 from src.dataModel.task import Task, TaskType, TaskStatus
+from src.dataModel.model import AccessorType, Model
+from src.modelAccessors.base_accessor import BaseModelAccessor
+from src.modelAccessors.openai_accessor import OpenAIAccessor
+from src.modelAccessors.anthropic_accessor import AnthropicAccessor
 
 class Project(BaseModel):
     failedTasks:     list[Task]
@@ -10,6 +14,19 @@ class Project(BaseModel):
     queuedTasks:     list[Task]
 
 class AgentOrchestrator:
+    def __init__(self):
+        pass
+    
+    def _get_accessor(self, accessor_type: AccessorType) -> BaseModelAccessor:
+        """Get the appropriate accessor for the given accessor type."""
+        match accessor_type:
+            case AccessorType.OPENAI:
+                return OpenAIAccessor()
+            case AccessorType.ANTHROPIC:
+                return AnthropicAccessor()
+            case _:
+                raise ValueError(f"Unknown accessor type: {accessor_type}")
+
     def implement_project(self, project_prompt: str) -> Project:
         """
         Orchestrates the implementation of a project by decomposing it into tasks,
@@ -18,11 +35,16 @@ class AgentOrchestrator:
         :param project_prompt: The initial prompt describing the project.
         :return: Summary of the implemented project.
         """
-        # Create an agent node for the orchestrator
-        orchestrator_agent = AgentNode(agent_id="orchestrator")
+        # Create the root task
+        root_task: Task = self.create_root_task(project_prompt)
+        
+        # Get the appropriate accessor for the root task's model
+        accessor = self._get_accessor(root_task.model.accessor_type)
+        
+        # Create an agent node for the orchestrator with the appropriate accessor
+        orchestrator_agent = AgentNode(agent_id="orchestrator", accessor=accessor)
 
         # Have the orchestrator agent execute the root task (Decompose)
-        root_task: Task = self.create_root_task(project_prompt)
         response: ModelResponse = orchestrator_agent.execute_task(root_task)
 
         project: Project = Project(
@@ -55,8 +77,11 @@ class AgentOrchestrator:
             current_task.status = TaskStatus.IN_PROGRESS
             project.inProgressTasks.append(current_task)
             
-            # Create an agent node for the current task
-            agent = AgentNode(agent_id=current_task.task_id)
+            # Get the appropriate accessor for the current task's model
+            task_accessor = self._get_accessor(current_task.model.accessor_type)
+            
+            # Create an agent node for the current task with the appropriate accessor
+            agent = AgentNode(agent_id=current_task.task_id, accessor=task_accessor)
             
             # Execute the task using the agent
             response: ModelResponse = agent.execute_task(current_task)
@@ -89,7 +114,7 @@ class AgentOrchestrator:
         return Task(
             task_id="root-task",
             task_type=TaskType.DECOMPOSE,
-            prompt=project_prompt
+            prompt=project_prompt,
+            model=Model()  # Use default model
         )
-        
-        
+
