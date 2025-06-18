@@ -3,11 +3,11 @@ from typing import Any, Optional, Dict
 
 class BaseModelAccessor(ABC):
     @abstractmethod
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
+    def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> Any:
         pass
 
     @abstractmethod
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[Dict[str, Any]] = None):
+    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[Dict[str, Any]] = None) -> Any:
         """
         Execute a task with available MCP tools. The accessor handles whether to:
         1. Use native tool calling (for agentic models)

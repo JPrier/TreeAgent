@@ -12,23 +12,21 @@ class OpenAIAccessor(BaseModelAccessor):
     def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:
         """
         Sends a prompt to the specified OpenAI model and returns the response.
-
-        :param model: The model to use for generating the response.
-        :param messages: A list of messages to send to the model.
-        :return: The response from the model.
         """
-        response: dict[Any, Any] = self.client.chat.completions.create(
-            model=model,  # or any that support structured outputs
+        response = self.client.chat.completions.create(
+            model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            response_format={
-                "json_schema": TypeAdapter(ModelResponse).json_schema(),
-                "strict": True
-            }
+            response_format={"type": "json_object"}
         )
-        return ModelResponse.model_validate_json(response.choices[0].message.content)
+        
+        content: str | None = response.choices[0].message.content
+        if not content:
+            raise ValueError("No content in response")
+            
+        return TypeAdapter(ModelResponse).validate_json(content) # type: ignore
 
     def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[Dict[str, Any]] = None) -> ModelResponse:
         """
@@ -54,7 +52,7 @@ class OpenAIAccessor(BaseModelAccessor):
         if not tools:
             return "No tools available."
         
-        tool_descriptions = []
+        tool_descriptions: list[str] = []
         for tool_name, tool_info in tools.items():
             description = tool_info.get('description', 'No description available')
             tool_descriptions.append(f"- {tool_name}: {description}")

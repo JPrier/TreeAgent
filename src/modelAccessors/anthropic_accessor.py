@@ -25,7 +25,7 @@ class AnthropicAccessor(BaseModelAccessor):
         if not tools:
             return "No tools available."
         
-        tool_descriptions = []
+        tool_descriptions: list[str] = []
         for tool_name, tool_info in tools.items():
             description = tool_info.get('description', 'No description available')
             tool_descriptions.append(f"- {tool_name}: {description}")
