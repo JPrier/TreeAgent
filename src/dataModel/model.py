@@ -6,5 +6,5 @@ class AccessorType(str, Enum):
     ANTHROPIC = "anthropic"
 
 class Model(BaseModel):
-    name: str = "gpt-4.1-nano"  # Default to a reasonable OpenAI model
+    name: str = "gpt-4.1-nano"
     accessor_type: AccessorType = AccessorType.OPENAI
