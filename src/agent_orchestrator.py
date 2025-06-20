@@ -1,11 +1,11 @@
 from pydantic import BaseModel
 from dataModel.model_response import ModelResponse, ModelResponseType
-from src.agent_node import AgentNode
-from src.dataModel.task import Task, TaskType, TaskStatus
-from src.dataModel.model import AccessorType, Model
-from src.modelAccessors.base_accessor import BaseModelAccessor
-from src.modelAccessors.openai_accessor import OpenAIAccessor
-from src.modelAccessors.anthropic_accessor import AnthropicAccessor
+from agent_node import AgentNode
+from .dataModel.task import Task, TaskType, TaskStatus
+from .dataModel.model import AccessorType, Model
+from .modelAccessors.base_accessor import BaseModelAccessor
+from .modelAccessors.openai_accessor import OpenAIAccessor
+from .modelAccessors.anthropic_accessor import AnthropicAccessor
 
 class Project(BaseModel):
     failedTasks:     list[Task]
@@ -118,3 +118,13 @@ class AgentOrchestrator:
             model=Model()  # Use default model
         )
 
+if __name__ == "__main__":
+    orchestrator = AgentOrchestrator()
+    project_prompt = "Build a simple web application with user authentication and a dashboard."
+    project = orchestrator.implement_project(project_prompt)
+    
+    print("Project Summary:")
+    print(f"Completed Tasks: {len(project.completedTasks)}")
+    print(f"In Progress Tasks: {len(project.inProgressTasks)}")
+    print(f"Failed Tasks: {len(project.failedTasks)}")
+    print(f"Queued Tasks: {len(project.queuedTasks)}")

@@ -32,6 +32,7 @@ class Task(BaseModel):
     status:    TaskStatus = TaskStatus.PENDING
     model:     Model = Model()
     tools:     Optional[Dict[str, Any]] = None  # Available MCP tools for this task
+    result:    Optional[str] = None  # Result of the task execution
 
     class Config:
         use_enum_values = True

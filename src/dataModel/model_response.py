@@ -1,7 +1,7 @@
 from enum import Enum
 from typing import Literal, Annotated, Union
 from pydantic import BaseModel, Field
-from src.dataModel.task import Task
+from .task import Task
 
 class ModelResponseType(str, Enum):
     DECOMPOSED = "decomposed"
