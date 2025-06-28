@@ -1,9 +1,9 @@
-from .modelAccessors.base_accessor import BaseModelAccessor
+from .base_accessor import BaseModelAccessor
 from os import environ
 from typing import Any, Optional, Dict
 from openai import OpenAI
 from pydantic import TypeAdapter
-from .dataModel.model_response import ModelResponse
+from ..dataModel.model_response import ModelResponse
 
 class OpenAIAccessor(BaseModelAccessor):
     def __init__(self):

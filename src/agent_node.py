@@ -1,7 +1,7 @@
 from .modelAccessors.base_accessor import BaseModelAccessor
 from .dataModel.task import Task, TaskType, TaskStatus
-from dataBuilders.prompt_builder import PromptBuilder
-from .dataModel.model_response import ModelResponse
+from .dataBuilders.prompt_builder import PromptBuilder
+from .dataModel.model_response import ModelResponse, ModelResponseType, DecomposedResponse, FailedResponse, ImplementedResponse
 from .validators.python_code_validator import PythonCodeValidator
 
 class AgentNode:
@@ -9,12 +9,11 @@ class AgentNode:
         self.agent_id = agent_id
         self.accessor = accessor
         self.prompt_builder = PromptBuilder()
-        self.code_validator = PythonCodeValidator()
 
     def __repr__(self):
         return f"AgentNode(id={self.agent_id})"
     
-    def execute_task(self, task: Task):
+    def execute_task(self, task: Task) -> ModelResponse | None:
         """
         Execute a task using the injected model accessor.
         The accessor handles whether the model supports direct MCP execution or needs simulation.
@@ -25,10 +24,10 @@ class AgentNode:
         #     * Add an accessor to run for each
         #   * Decide which tasks should have tools and which should just use chat - ex: Decomposition could use no tools but would need context
 
-        if Task.task_type == TaskType.VALIDATE_CODE:
+        if task.task_type == TaskType.VALIDATE_CODE:
             return self.run_code_validation(task)
         
-        if Task.task_type == TaskType.DECOMPOSE:
+        if task.task_type == TaskType.DECOMPOSE:
             return self.run_llm_chat(task)
 
         if not task.tools or len(task.tools) == 0:
@@ -36,13 +35,18 @@ class AgentNode:
 
         return self.run_llm_agent(task)
     
-    def run_code_validation(self, task: Task):
-        validation_results = self.code_validator.validate_code() # need a way to pass the code to validate (ideally the entire project)
+    def run_code_validation(self, task: Task) -> ModelResponse:
+        code_validator: PythonCodeValidator = PythonCodeValidator(code="")
+        validation_results = code_validator.validate_code() # need a way to pass the code to validate (ideally the entire project)
         if validation_results.is_valid:
             task.status = TaskStatus.COMPLETED
+            return ImplementedResponse(summary="Code validation passed successfully")
         else:
             task.status = TaskStatus.FAILED
-            task.result = validation_results.errors
+            # Convert the errors list to a string
+            task.result = str(validation_results.errors) if validation_results.errors else "Validation failed"
+            error_msg = str(validation_results.errors) if validation_results.errors else "Validation failed"
+            return FailedResponse(error_message=error_msg, retryable=True)
 
     def run_llm_agent(self, task: Task) -> ModelResponse:
         system_prompt = self.prompt_builder.build_system_prompt(task)

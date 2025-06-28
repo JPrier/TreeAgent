@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from dataModel.model_response import ModelResponse, ModelResponseType
-from agent_node import AgentNode
+from .dataModel.model_response import ModelResponse, ModelResponseType
+from .agent_node import AgentNode
 from .dataModel.task import Task, TaskType, TaskStatus
 from .dataModel.model import AccessorType, Model
 from .modelAccessors.base_accessor import BaseModelAccessor
 from .modelAccessors.openai_accessor import OpenAIAccessor
 from .modelAccessors.anthropic_accessor import AnthropicAccessor
+from .modelAccessors.mock_accessor import MockAccessor
 
 class Project(BaseModel):
     failedTasks:     list[Task]
@@ -15,6 +16,7 @@ class Project(BaseModel):
 
 class AgentOrchestrator:
     def __init__(self):
+        # Initialize the orchestrator - no setup needed currently
         pass
     
     def _get_accessor(self, accessor_type: AccessorType) -> BaseModelAccessor:
@@ -24,6 +26,8 @@ class AgentOrchestrator:
                 return OpenAIAccessor()
             case AccessorType.ANTHROPIC:
                 return AnthropicAccessor()
+            case AccessorType.MOCK:
+                return MockAccessor()
             case _:
                 raise ValueError(f"Unknown accessor type: {accessor_type}")
 
@@ -45,7 +49,17 @@ class AgentOrchestrator:
         orchestrator_agent = AgentNode(agent_id="orchestrator", accessor=accessor)
 
         # Have the orchestrator agent execute the root task (Decompose)
-        response: ModelResponse = orchestrator_agent.execute_task(root_task)
+        response: ModelResponse | None = orchestrator_agent.execute_task(root_task)
+        
+        if response is None:
+            # Handle case where execution failed
+            project: Project = Project(
+                failedTasks=[root_task],
+                completedTasks=[],
+                inProgressTasks=[],
+                queuedTasks=[]
+            )
+            return project
 
         project: Project = Project(
             failedTasks=[],
@@ -84,19 +98,25 @@ class AgentOrchestrator:
             agent = AgentNode(agent_id=current_task.task_id, accessor=task_accessor)
             
             # Execute the task using the agent
-            response: ModelResponse = agent.execute_task(current_task)
+            task_response: ModelResponse | None = agent.execute_task(current_task)
             
             # Handle the response based on its type
             project.inProgressTasks.remove(current_task)
-            match response.response_type:
+            
+            if task_response is None:
+                current_task.status = TaskStatus.FAILED
+                project.failedTasks.append(current_task)
+                continue
+                
+            match task_response.response_type:
                 case ModelResponseType.DECOMPOSED:
                     current_task.status = TaskStatus.IN_PROGRESS
-                    project.queuedTasks.extend(response.subtasks)
+                    project.queuedTasks.extend(task_response.subtasks)
                 case ModelResponseType.IMPLEMENTED:
                     current_task.status = TaskStatus.COMPLETED
                     project.completedTasks.append(current_task)
                 case ModelResponseType.FAILED:
-                    if response.retryable:
+                    if task_response.retryable:
                         current_task.status = TaskStatus.PENDING
                         project.queuedTasks.append(current_task)
                     else:
@@ -120,11 +140,11 @@ class AgentOrchestrator:
 
 if __name__ == "__main__":
     orchestrator = AgentOrchestrator()
-    project_prompt = "Build a simple web application with user authentication and a dashboard."
-    project = orchestrator.implement_project(project_prompt)
+    example_prompt = "Build a simple web application with user authentication and a dashboard."
+    result_project = orchestrator.implement_project(example_prompt)
     
     print("Project Summary:")
-    print(f"Completed Tasks: {len(project.completedTasks)}")
-    print(f"In Progress Tasks: {len(project.inProgressTasks)}")
-    print(f"Failed Tasks: {len(project.failedTasks)}")
-    print(f"Queued Tasks: {len(project.queuedTasks)}")
+    print(f"Completed Tasks: {len(result_project.completedTasks)}")
+    print(f"In Progress Tasks: {len(result_project.inProgressTasks)}")
+    print(f"Failed Tasks: {len(result_project.failedTasks)}")
+    print(f"Queued Tasks: {len(result_project.queuedTasks)}")

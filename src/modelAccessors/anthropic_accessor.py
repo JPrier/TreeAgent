@@ -1,6 +1,6 @@
 from .base_accessor import BaseModelAccessor
 from typing import Optional, Dict, Any
-from .dataModel.model_response import ModelResponse
+from ..dataModel.model_response import ModelResponse
 
 class AnthropicAccessor(BaseModelAccessor):
     def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:

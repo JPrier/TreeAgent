@@ -1,8 +1,8 @@
 import json
 from typing import Any
 from pydantic import TypeAdapter
-from src.dataModel.model_response import ModelResponse
-from src.dataModel.task import Task, TaskType
+from ..dataModel.model_response import ModelResponse
+from ..dataModel.task import Task, TaskType
 
 class PromptBuilder:
     def __init__(self):
@@ -33,16 +33,16 @@ class PromptBuilder:
 
     def build(self, task: Task) -> str:
         match task.task_type:
-            case TaskType.IMPLEMENT:
-                return self._build_implement_prompt(task)
-            case TaskType.DESIGN:
-                return self._build_design_prompt(task)
+            case TaskType.IMPLEMENT_CODE:
+                return self._build_implement_code_prompt(task)
+            case TaskType.DESIGN_CODE:
+                return self._build_design_code_prompt(task)
             case TaskType.DECOMPOSE:
                 return self._build_decompose_prompt(task)
-            case TaskType.RESEARCH:
-                return self._build_research_prompt(task)
-            case TaskType.VALIDATE:
-                return self._build_validate_prompt(task)
+            case TaskType.RESEARCH_CODE:
+                return self._build_research_code_prompt(task)
+            case TaskType.VALIDATE_CODE:
+                return self._build_validate_code_prompt(task)
             case TaskType.DOCUMENT:
                 return self._build_document_prompt(task)
             case _:
@@ -50,14 +50,14 @@ class PromptBuilder:
             
     def build_system_prompt(self, task: Task) -> str:
         base = {
-            TaskType.IMPLEMENT: "You are a senior software engineer. Write clean, efficient, and testable code.",
-            TaskType.DESIGN: "You are a software architect. Design robust, scalable solutions with clear justifications.",
+            TaskType.IMPLEMENT_CODE: "You are a senior software engineer. Write clean, efficient, and testable code.",
+            TaskType.DESIGN_CODE: "You are a software architect. Design robust, scalable solutions with clear justifications.",
             TaskType.DECOMPOSE: (
                 "You are a technical planner. Evaluate whether the input task is complex enough to require decomposition. "
                 "If yes, break it into smaller subtasks with types; otherwise return implemented or failed."
             ),
-            TaskType.RESEARCH: "You are a researcher. Gather accurate, recent info and cite sources.",
-            TaskType.VALIDATE: "You are a code reviewer. Analyze output, flag issues, suggest improvements.",
+            TaskType.RESEARCH_CODE: "You are a researcher. Gather accurate, recent info and cite sources.",
+            TaskType.VALIDATE_CODE: "You are a code reviewer. Analyze output, flag issues, suggest improvements.",
             TaskType.DOCUMENT: "You are a documentation expert. Write clear, developer-friendly documentation.",
         }.get(task.task_type, "You are an expert assistant.")
 
@@ -76,11 +76,11 @@ class PromptBuilder:
             "Now respond with the correct JSON."
         )
 
-    def _build_implement_prompt(self, task: Task) -> str:
+    def _build_implement_code_prompt(self, task: Task) -> str:
         body = f"Implement the following request:\n{task.prompt}"
         return self._with_example(body, self.example_implemented)
 
-    def _build_design_prompt(self, task: Task) -> str:
+    def _build_design_code_prompt(self, task: Task) -> str:
         body = f"Design a solution for:\n{task.prompt}"
         return self._with_example(body, self.example_implemented)
 
@@ -91,11 +91,11 @@ class PromptBuilder:
         )
         return self._with_example(body, self.example_decomposed)
 
-    def _build_research_prompt(self, task: Task) -> str:
+    def _build_research_code_prompt(self, task: Task) -> str:
         body = f"Conduct research on:\n{task.prompt}"
         return self._with_example(body, self.example_implemented)
 
-    def _build_validate_prompt(self, task: Task) -> str:
+    def _build_validate_code_prompt(self, task: Task) -> str:
         body = f"Validate the following:\n{task.prompt}"
         return self._with_example(body, self.example_implemented)
 

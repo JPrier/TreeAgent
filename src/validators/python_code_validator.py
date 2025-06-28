@@ -10,6 +10,9 @@ TODO
 * Run mutation testing and test coverage
 """
 
+from cycler import V
+from ..dataModel.validation_result import ValidationResult
+
 class PythonCodeValidator:
     def __init__(self, code: str):
         self.code = code
@@ -41,10 +44,10 @@ class PythonCodeValidator:
     def validate_code(self) -> ValidationResult:
         """Run all validation checks on the Python code."""
         if not self.validate_syntax():
-            return False
+            return ValidationResult(is_valid=False, errors=["Syntax error in code."])
         
         self.run_static_analysis()
         self.check_formatting()
         self.run_tests()
         
-        return True
+        return ValidationResult(is_valid=True, errors=None)
