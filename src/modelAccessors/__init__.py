@@ -3,7 +3,6 @@ from .base_accessor import BaseModelAccessor, Tool
 from .openai_accessor import OpenAIAccessor
 from .anthropic_accessor import AnthropicAccessor
 from .gemini_accessor import GeminiAccessor
-from .huggingface_accessor import HuggingFaceAccessor
 from .mock_accessor import MockAccessor
 
 __all__ = [
@@ -12,6 +11,5 @@ __all__ = [
     "OpenAIAccessor",
     "AnthropicAccessor", 
     "GeminiAccessor",
-    "HuggingFaceAccessor",
     "MockAccessor"
 ]

@@ -10,7 +10,6 @@ TODO
 * Run mutation testing and test coverage
 """
 
-from cycler import V
 from ..dataModel.validation_result import ValidationResult
 
 class PythonCodeValidator:
