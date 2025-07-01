@@ -1,37 +1,87 @@
-from .base_accessor import BaseModelAccessor
-from typing import Optional, Dict, Any
+from anthropic import Anthropic
+from os import environ
+from typing import Any, Optional, Dict, List
+from pydantic import TypeAdapter
+from .base_accessor import BaseModelAccessor, Tool
 from ..dataModel.model_response import ModelResponse
 
 class AnthropicAccessor(BaseModelAccessor):
+    def __init__(self):
+        self.client = Anthropic(api_key=environ.get("ANTHROPIC_API_KEY"))
+        # Models with tool support
+        self.tool_supported_models = ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-5-sonnet-20240620"]
+        
     def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:
-        # TODO: Implement Anthropic API call here
-        raise NotImplementedError("AnthropicAccessor.prompt_model not implemented yet.")
-    
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[Dict[str, Any]] = None) -> ModelResponse:
-        """
-        Execute task with available tools. For future agentic Anthropic models, this could use native tool calling.
-        For now, simulate through chat like OpenAI.
-        """
-        if tools:
-            tools_description = self._format_tools_for_prompt(tools)
-            enhanced_system_prompt = f"{system_prompt}\n\nAvailable tools:\n{tools_description}\n\nYou can use these tools to complete the task."
-        else:
-            enhanced_system_prompt = system_prompt
+        """Basic text prompting for Claude models"""
+        response = self.client.messages.create(
+            model=model,
+            max_tokens=4096,
+            system=system_prompt,
+            messages=[
+                {"role": "user", "content": user_prompt}
+            ]
+        )
         
-        return self.prompt_model(model, enhanced_system_prompt, user_prompt)
-    
-    def _format_tools_for_prompt(self, tools: Dict[str, Any]) -> str:
-        """Format tools dictionary into a readable description for the prompt."""
+        content = response.content[0].text
+        if not content:
+            raise ValueError("No content in response")
+            
+        return TypeAdapter(ModelResponse).validate_json(content)
+        
+    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[List[Tool]] = None) -> ModelResponse:
+        """Execute task with tools - native tools if supported"""
         if not tools:
-            return "No tools available."
+            return self.prompt_model(model, system_prompt, user_prompt)
+            
+        if self.supports_tools(model):
+            # Use Claude's native tool use
+            claude_tools = self._convert_to_claude_tools(tools)
+            
+            response = self.client.messages.create(
+                model=model,
+                max_tokens=4096,
+                system=system_prompt,
+                messages=[
+                    {"role": "user", "content": user_prompt}
+                ],
+                tools=claude_tools
+            )
+            
+            content = response.content[0].text
+            if not content:
+                raise ValueError("No content in response")
+                
+            return TypeAdapter(ModelResponse).validate_json(content)
+        else:
+            # Fallback for models without tool support
+            tools_description = self._format_tools_for_prompt(tools)
+            enhanced_system_prompt = f"{system_prompt}\n\nAvailable tools:\n{tools_description}"
+            return self.prompt_model(model, enhanced_system_prompt, user_prompt)
+    
+    def supports_tools(self, model: str) -> bool:
+        """Check if model supports native tool use"""
+        return model in self.tool_supported_models
         
-        tool_descriptions: list[str] = []
-        for tool_name, tool_info in tools.items():
-            description = tool_info.get('description', 'No description available')
-            tool_descriptions.append(f"- {tool_name}: {description}")
+    def _convert_to_claude_tools(self, tools: List[Tool]) -> List[Dict[str, Any]]:
+        """Convert our Tool objects to Claude's tool format"""
+        claude_tools = []
+        for tool in tools:
+            claude_tools.append({
+                "name": tool.name,
+                "description": tool.description,
+                "input_schema": {
+                    "type": "object",
+                    "properties": tool.parameters,
+                    "required": []
+                }
+            })
+        return claude_tools
+        
+    def _format_tools_for_prompt(self, tools: List[Tool]) -> str:
+        """Format tools into a readable description for the prompt"""
+        tool_descriptions = []
+        for tool in tools:
+            params_desc = ", ".join(f"{k}" for k in tool.parameters.keys())
+            tool_descriptions.append(f"- {tool.name}: {tool.description} [Parameters: {params_desc}]")
         
         return "\n".join(tool_descriptions)
-    
-    def supports_mcp(self, model: str) -> bool:
-        # Future: some Anthropic models might support direct MCP
-        return model.startswith("claude-3.5") and "computer-use" in model.lower()  # Example logic

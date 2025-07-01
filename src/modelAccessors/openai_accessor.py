@@ -1,13 +1,16 @@
-from .base_accessor import BaseModelAccessor
 from os import environ
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, List
 from openai import OpenAI
+from openai.types.chat import ChatCompletionToolParam
 from pydantic import TypeAdapter
+from .base_accessor import BaseModelAccessor, Tool
 from ..dataModel.model_response import ModelResponse
 
 class OpenAIAccessor(BaseModelAccessor):
     def __init__(self):
         self.client = OpenAI(api_key=environ.get("OPENAI_API_KEY"))
+        # Models that support function calling/tools
+        self.tool_supported_models = ["gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo-0125", "gpt-3.5-turbo"]
 
     def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:
         """
@@ -28,44 +31,50 @@ class OpenAIAccessor(BaseModelAccessor):
             
         return TypeAdapter(ModelResponse).validate_json(content) # type: ignore
 
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[Dict[str, Any]] = None) -> ModelResponse:
+    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[List[Tool]] = None) -> ModelResponse:
         """
-        Execute task with available tools. For OpenAI (non-agentic), we simulate tool usage through chat.
-
-        :param model: The model to use for generating the response.
-        :param system_prompt: The system prompt to guide the model.
-        :param user_prompt: The user prompt containing the task.
-        :param tools: Optional; a dictionary of available tools and their information.
-        :return: The response from the model simulating tool usage.
+        Execute task with tools - using native function calling if supported
         """
-        if tools:
-            # Add tool information to the system prompt for chat-based simulation
-            tools_description = self._format_tools_for_prompt(tools)
-            enhanced_system_prompt = f"{system_prompt}\n\nAvailable tools:\n{tools_description}\n\nYou can reference these tools in your response, but simulate their execution as needed."
-        else:
-            enhanced_system_prompt = system_prompt
+        if not tools or not self.supports_tools(model):
+            return self.prompt_model(model, system_prompt, user_prompt)
         
-        return self.prompt_model(model, enhanced_system_prompt, user_prompt)
-
-    def _format_tools_for_prompt(self, tools: Dict[str, Any]) -> str:
-        """Format tools dictionary into a readable description for the prompt."""
-        if not tools:
-            return "No tools available."
+        # Use native OpenAI function calling
+        openai_tools = self._convert_to_openai_tools(tools)
         
-        tool_descriptions: list[str] = []
-        for tool_name, tool_info in tools.items():
-            description = tool_info.get('description', 'No description available')
-            tool_descriptions.append(f"- {tool_name}: {description}")
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt},
+            ],
+            tools=openai_tools,
+            response_format={"type": "json_object"}
+        )
         
-        return "\n".join(tool_descriptions)
-
-    def supports_mcp(self, model: str) -> bool:
-        # OpenAI models do not support direct MCP
-        return False
-
-    def run_mcp_command(self, model: str, command: str, context: dict[str, Any]) -> str:
-        # Fallback: Use chat to infer MCP command
-        system_prompt = f"You are an AI agent. Execute the following MCP command as best as possible: {command}\nContext: {context}"
-        user_prompt = "Respond with the result of the command."
-        response = self.prompt_model(model, system_prompt, user_prompt)
-        return str(response)
+        content = response.choices[0].message.content
+        if not content:
+            raise ValueError("No content in response")
+            
+        return TypeAdapter(ModelResponse).validate_json(content)
+    
+    def supports_tools(self, model: str) -> bool:
+        """Check if model supports native tools/function calling"""
+        return model in self.tool_supported_models
+        
+    def _convert_to_openai_tools(self, tools: List[Tool]) -> List[ChatCompletionToolParam]:
+        """Convert our Tool objects to OpenAI's tool format"""
+        openai_tools = []
+        for tool in tools:
+            openai_tools.append({
+                "type": "function",
+                "function": {
+                    "name": tool.name,
+                    "description": tool.description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": tool.parameters,
+                        "required": []  # Could be enhanced with required params
+                    }
+                }
+            })
+        return openai_tools
