@@ -1,8 +1,8 @@
-import google.generativeai as genai
 from os import environ
+import json
 from typing import Any, Dict, List, Optional
 from pydantic import TypeAdapter
-import json
+import google.generativeai as genai
 from .base_accessor import BaseModelAccessor, Tool
 from ..dataModel.model_response import ModelResponse
 
