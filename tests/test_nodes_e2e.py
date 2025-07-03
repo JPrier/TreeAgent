@@ -2,6 +2,10 @@ from pydantic import TypeAdapter
 from agentNodes.clarifier import Clarifier
 from agentNodes.researcher import Researcher
 from agentNodes.hld_designer import HLDDesigner
+from agentNodes.implementer import Implementer
+from agentNodes.reviewer import Reviewer
+from agentNodes.tester import Tester
+from agentNodes.deployer import Deployer
 from dataModel.task import Task, TaskType
 from dataModel.model_response import ModelResponse, DecomposedResponse
 
@@ -9,6 +13,10 @@ NODE_REGISTRY = {
     "clarify": Clarifier(),
     "research": Researcher(),
     "hld": HLDDesigner(),
+    "implement": Implementer(),
+    "review": Reviewer(),
+    "test": Tester(),
+    "deploy": Deployer(),
 }
 
 def route(task: Task, state: dict) -> dict:
@@ -16,6 +24,14 @@ def route(task: Task, state: dict) -> dict:
         return NODE_REGISTRY["clarify"](state, {})
     if task.type == TaskType.RESEARCH:
         return NODE_REGISTRY["research"](state, {})
+    if task.type == TaskType.IMPLEMENT:
+        return NODE_REGISTRY["implement"](state, {})
+    if task.type == TaskType.REVIEW:
+        return NODE_REGISTRY["review"](state, {})
+    if task.type == TaskType.TEST:
+        return NODE_REGISTRY["test"](state, {})
+    if task.type == TaskType.DEPLOY:
+        return NODE_REGISTRY["deploy"](state, {})
     return NODE_REGISTRY["hld"](state, {})
 
 
@@ -43,3 +59,35 @@ def test_end_to_end_chain():
     design_parsed = adapter.validate_python(design_res)
     assert isinstance(design_parsed, DecomposedResponse)
     assert len(design_parsed.subtasks) == 2
+
+    # implementation phase
+    implement_task = Task(id="i1", description="Implement", type=TaskType.IMPLEMENT)
+    state["task_queue"] = [implement_task]
+    implement_res = route(implement_task, state)
+    implement_parsed = adapter.validate_python(implement_res)
+    assert implement_parsed.response_type == "implemented"
+    state["last_response"] = implement_parsed
+
+    # review phase
+    review_task = Task(id="v1", description="Review", type=TaskType.REVIEW)
+    state["task_queue"] = [review_task]
+    review_res = route(review_task, state)
+    review_parsed = adapter.validate_python(review_res)
+    assert review_parsed.response_type == "implemented"
+    state["last_response"] = review_parsed
+
+    # test phase
+    test_task = Task(id="t1", description="Test", type=TaskType.TEST)
+    state["task_queue"] = [test_task]
+    test_res = route(test_task, state)
+    test_parsed = adapter.validate_python(test_res)
+    assert test_parsed.response_type == "implemented"
+
+    # deploy phase
+    deploy_task = Task(id="dpl1", description="Deploy", type=TaskType.DEPLOY)
+    state["task_queue"] = [deploy_task]
+    deploy_res = route(deploy_task, state)
+    deploy_parsed = adapter.validate_python(deploy_res)
+    assert deploy_parsed.response_type == "implemented"
+    assert deploy_parsed.content == "deployed"
+    assert deploy_parsed.artifacts == ["foo.py"]
