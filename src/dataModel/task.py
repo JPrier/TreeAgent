@@ -1,45 +1,48 @@
+from __future__ import annotations
+
 from enum import Enum
-from pydantic import BaseModel
-from typing import Optional, Dict, Any
-from .model import Model
+from typing import Optional
+
+from pydantic import BaseModel, Field, model_validator
+
 
 class TaskType(str, Enum):
-    IMPLEMENT_CODE   = "implement_code"
-    DESIGN_SYSTEM    = "design_system"
-    DESIGN_CODE      = "design_code"
-    DECOMPOSE        = "decompose"
-    RESEARCH_WEB     = "research_web"
-    RESEARCH_CODE    = "research_code"
-    VALIDATE_CODE    = "validate_code"
-    VALIDATE_DESIGN  = "validate_design"
-    DOCUMENT         = "document"
-    UNKNOWN          = "unknown"
+    REQUIREMENTS = "requirements"
+    RESEARCH = "research"
+    HLD = "hld"
+    LLD = "lld"
+    IMPLEMENT = "implement"
+    REVIEW = "review"
+    TEST = "test"
+    DEPLOY = "deploy"
+
 
 class TaskStatus(str, Enum):
-    PENDING             = "pending"
-    IN_PROGRESS         = "in_progress"
-    PENDING_VALIDATION  = "pending_validation"
+    """Lifecycle state for a task."""
+
+    PENDING = "pending"
+    IN_PROGRESS = "in_progress"
+    PENDING_VALIDATION = "pending_validation"
     PENDING_USER_REVIEW = "pending_user_review"
-    PENDING_USER_INPUT  = "pending_user_input"
-    COMPLETED           = "completed"
-    BLOCKED             = "blocked"
-    FAILED              = "failed"
+    PENDING_USER_INPUT = "pending_user_input"
+    COMPLETED = "completed"
+    BLOCKED = "blocked"
+    FAILED = "failed"
+
 
 class Task(BaseModel):
-    task_id:   str
-    task_type: TaskType
-    prompt:    str
-    status:    TaskStatus = TaskStatus.PENDING
-    model:     Model = Model()
-    tools:     Optional[Dict[str, Any]] = None  # Available MCP tools for this task
-    result:    Optional[str] = None  # Result of the task execution
+    """Basic unit of work for the agent tree."""
 
-    class Config:
-        use_enum_values = True
+    id: str
+    description: str
+    type: TaskType
+    status: TaskStatus = TaskStatus.PENDING
+    complexity: int = 1
+    parent_id: Optional[str] = None
+    metadata: dict = Field(default_factory=dict)
 
-# TODO: Map MCP tools to TaskTypes -- How can I do this dynamically so users can use any MCP servers
-TOOL_SET: dict[TaskType, str] = {
-
-}
-
-
+    @model_validator(mode="after")
+    def _validate_complexity(cls, model: "Task") -> "Task":
+        if model.complexity < 1:
+            raise ValueError("complexity must be >= 1")
+        return model
