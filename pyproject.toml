@@ -19,5 +19,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = []
 
+[project.scripts]
+treeagent = "cli:main"
+
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
