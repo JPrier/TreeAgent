@@ -13,21 +13,21 @@ class _BaseResponse(BaseModel):
 
 
 class DecomposedResponse(_BaseResponse):
-    response_type: Literal["decomposed"] = Field("decomposed", const=True)
+    response_type: Literal["decomposed"] = Field("decomposed")
     subtasks: list[Task]
 
 
 class ImplementedResponse(_BaseResponse):
-    response_type: Literal["implemented"] = Field("implemented", const=True)
+    response_type: Literal["implemented"] = Field("implemented")
 
 
 class FollowUpResponse(_BaseResponse):
-    response_type: Literal["follow_up_required"] = Field("follow_up_required", const=True)
+    response_type: Literal["follow_up_required"] = Field("follow_up_required")
     follow_up_ask: Task
 
 
 class FailedResponse(_BaseResponse):
-    response_type: Literal["failed"] = Field("failed", const=True)
+    response_type: Literal["failed"] = Field("failed")
     error_message: str
     retryable: bool = False
 
