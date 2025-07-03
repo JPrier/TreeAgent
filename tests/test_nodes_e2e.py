@@ -1,17 +1,7 @@
-import sys
-from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(PROJECT_ROOT / "src"))
-
-import litellm
-
-litellm.with_structured_output = lambda *a, **k: (lambda x: x)
-
+from pydantic import TypeAdapter
 from agentNodes.clarifier import Clarifier
 from agentNodes.researcher import Researcher
 from agentNodes.hld_designer import HLDDesigner
-from pydantic import TypeAdapter
 from dataModel.task import Task, TaskType
 from dataModel.model_response import ModelResponse, DecomposedResponse
 
