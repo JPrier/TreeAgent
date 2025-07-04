@@ -29,3 +29,4 @@ def test_hld_designer_implemented():
     res = node.execute_task(task)
 
     assert isinstance(res, ImplementedResponse)
+    assert "Design" in (res.content or "")
