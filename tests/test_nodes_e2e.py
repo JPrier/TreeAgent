@@ -1,7 +1,7 @@
 from pydantic import TypeAdapter
 from agentNodes.clarifier import Clarifier
 from agentNodes.researcher import Researcher
-from types import SimpleNamespace
+from modelAccessors.base_accessor import BaseModelAccessor
 
 from agentNodes.hld_designer import HLDDesigner
 from agentNodes.implementer import Implementer
@@ -10,6 +10,20 @@ from agentNodes.tester import Tester
 from agentNodes.deployer import Deployer
 from dataModel.task import Task, TaskType
 from dataModel.model_response import ModelResponse, DecomposedResponse, ImplementedResponse
+
+
+class _StubAccessor(BaseModelAccessor):
+    def __init__(self, callback):
+        self._callback = callback
+
+    def call_model(self, prompt: str, schema):
+        return self._callback(prompt, schema)
+
+    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
+        raise NotImplementedError()
+
+    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):
+        raise NotImplementedError()
 
 def _hld_call_model(prompt: str, schema):
     if "Complexity: 2" in prompt:
@@ -23,7 +37,7 @@ def _hld_call_model(prompt: str, schema):
 NODE_REGISTRY = {
     "clarify": Clarifier(),
     "research": Researcher(),
-    "hld": HLDDesigner(SimpleNamespace(call_model=_hld_call_model)),
+    "hld": HLDDesigner(_StubAccessor(_hld_call_model)),
     "implement": Implementer(),
     "review": Reviewer(),
     "test": Tester(),

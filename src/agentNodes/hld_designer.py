@@ -1,5 +1,6 @@
-from types import SimpleNamespace
 from typing import Any, Dict
+
+from modelAccessors.base_accessor import BaseModelAccessor
 
 from dataModel.task import Task
 from dataModel.model_response import (
@@ -20,12 +21,7 @@ class HLDDesigner:
 
     SCHEMA = DecomposedResponse | ImplementedResponse
 
-    def __init__(self, llm_accessor: Any | None = None):
-        # allow tests to pass in a stub accessor; default returns a simple outline
-        if llm_accessor is None:
-            llm_accessor = SimpleNamespace(
-                call_model=lambda prompt, schema: ImplementedResponse(content="outline")
-            )
+    def __init__(self, llm_accessor: BaseModelAccessor):
         self.llm_accessor = llm_accessor
 
     def execute_task(self, task: Task) -> ModelResponse:
