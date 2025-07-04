@@ -1,18 +1,29 @@
 from pydantic import TypeAdapter
 from agentNodes.clarifier import Clarifier
 from agentNodes.researcher import Researcher
+from types import SimpleNamespace
+
 from agentNodes.hld_designer import HLDDesigner
 from agentNodes.implementer import Implementer
 from agentNodes.reviewer import Reviewer
 from agentNodes.tester import Tester
 from agentNodes.deployer import Deployer
 from dataModel.task import Task, TaskType
-from dataModel.model_response import ModelResponse, DecomposedResponse
+from dataModel.model_response import ModelResponse, DecomposedResponse, ImplementedResponse
+
+def _hld_call_model(prompt: str, schema):
+    if "Complexity: 2" in prompt:
+        subtasks = [
+            Task(id="d1-1", description="sub", type=TaskType.HLD),
+            Task(id="d1-2", description="sub", type=TaskType.HLD),
+        ]
+        return DecomposedResponse(subtasks=subtasks)
+    return ImplementedResponse(content="outline")
 
 NODE_REGISTRY = {
     "clarify": Clarifier(),
     "research": Researcher(),
-    "hld": HLDDesigner(),
+    "hld": HLDDesigner(SimpleNamespace(call_model=_hld_call_model)),
     "implement": Implementer(),
     "review": Reviewer(),
     "test": Tester(),

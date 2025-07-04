@@ -1,30 +1,41 @@
+from types import SimpleNamespace
 from typing import Any, Dict
 
-from dataModel.task import Task, TaskType
-from dataModel.model_response import DecomposedResponse, ImplementedResponse
+from dataModel.task import Task
+from dataModel.model_response import (
+    ModelResponse,
+    DecomposedResponse,
+    ImplementedResponse,
+)
 
 
 class HLDDesigner:
-    """Creates high-level design subtasks or a simple outline."""
+    """Node that requests a high-level design from an LLM."""
+
+    PROMPT_TEMPLATE = (
+        "Create a high level design based on the following requirements:\n"
+        "{requirements}\n"
+        "Complexity: {complexity}"
+    )
 
     SCHEMA = DecomposedResponse | ImplementedResponse
 
-    def __call__(self, state: Dict[str, Any], config: Dict[str, Any] | None = None) -> dict:
-        task_queue = state["task_queue"]
-        current_task: Task = task_queue[0]
-        if current_task.complexity > 1:
-            subtasks = [
-                Task(
-                    id=f"{current_task.id}-{i+1}",
-                    description=f"HLD step {i+1}",
-                    type=TaskType.HLD,
-                    complexity=1,
-                    parent_id=current_task.id,
-                )
-                for i in range(current_task.complexity)
-            ]
-            resp = DecomposedResponse(subtasks=subtasks)
-        else:
-            resp = ImplementedResponse(content="HLD outline ...")
+    def __init__(self, llm_accessor: Any | None = None):
+        # allow tests to pass in a stub accessor; default returns a simple outline
+        if llm_accessor is None:
+            llm_accessor = SimpleNamespace(
+                call_model=lambda prompt, schema: ImplementedResponse(content="outline")
+            )
+        self.llm_accessor = llm_accessor
 
-        return resp.model_dump()
+    def execute_task(self, task: Task) -> ModelResponse:
+        prompt = HLDDesigner.PROMPT_TEMPLATE.format(
+            requirements=task.description,
+            complexity=task.complexity,
+        )
+        response: ModelResponse = self.llm_accessor.call_model(prompt, HLDDesigner.SCHEMA)
+        return response
+
+    def __call__(self, state: Dict[str, Any], config: Dict[str, Any] | None = None) -> dict:
+        current_task: Task = state["task_queue"][0]
+        return self.execute_task(current_task).model_dump()

@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from agent_nodes.hld_designer import HLDDesigner
+from agentNodes.hld_designer import HLDDesigner
 from dataModel.task import Task, TaskType
 from dataModel.model_response import DecomposedResponse, ImplementedResponse
 

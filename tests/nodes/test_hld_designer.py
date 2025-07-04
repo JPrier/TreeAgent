@@ -1,24 +1,31 @@
-from pydantic import TypeAdapter
+from types import SimpleNamespace
+
 from agentNodes.hld_designer import HLDDesigner
 from dataModel.task import Task, TaskType
 from dataModel.model_response import DecomposedResponse, ImplementedResponse
 
 
 def test_hld_designer_decomposes():
-    node = HLDDesigner()
     task = Task(id="h1", description="HLD", type=TaskType.HLD, complexity=3)
-    state = {"task_queue": [task]}
-    res = node(state, {})
-    parsed = TypeAdapter(HLDDesigner.SCHEMA).validate_python(res)
-    assert isinstance(parsed, DecomposedResponse)
-    assert len(parsed.subtasks) == 3
-    assert all(st.type == TaskType.HLD for st in parsed.subtasks)
+    subtasks = [
+        Task(id=f"h1-{i}", description="sub", type=TaskType.HLD)
+        for i in range(task.complexity)
+    ]
+    accessor = SimpleNamespace(call_model=lambda prompt, schema: DecomposedResponse(subtasks=subtasks))
+    node = HLDDesigner(accessor)
+
+    res = node.execute_task(task)
+
+    assert isinstance(res, DecomposedResponse)
+    assert len(res.subtasks) == 3
+    assert all(st.type == TaskType.HLD for st in res.subtasks)
 
 
 def test_hld_designer_implemented():
-    node = HLDDesigner()
     task = Task(id="h1", description="HLD", type=TaskType.HLD, complexity=1)
-    state = {"task_queue": [task]}
-    res = node(state, {})
-    parsed = TypeAdapter(HLDDesigner.SCHEMA).validate_python(res)
-    assert isinstance(parsed, ImplementedResponse)
+    accessor = SimpleNamespace(call_model=lambda prompt, schema: ImplementedResponse(content="Design"))
+    node = HLDDesigner(accessor)
+
+    res = node.execute_task(task)
+
+    assert isinstance(res, ImplementedResponse)
