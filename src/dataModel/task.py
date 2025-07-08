@@ -5,7 +5,7 @@ from typing import Optional, List
 
 from pydantic import BaseModel, Field, model_validator
 
-from modelAccessors.base_accessor import Tool
+from modelAccessors.data.tool import Tool
 
 
 class TaskType(str, Enum):

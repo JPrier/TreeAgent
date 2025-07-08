@@ -1,14 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict, List
 
-from pydantic import BaseModel, Field
-
-class Tool(BaseModel):
-    """Definition of a tool that can be used by a model."""
-
-    name: str
-    description: str
-    parameters: Dict[str, Any] = Field(default_factory=dict)
+from .data.tool import Tool
 
 class BaseModelAccessor(ABC):
     @abstractmethod

@@ -23,9 +23,27 @@ def test_web_search_parses_urls(monkeypatch):
     assert urls == ["https://a.com", "https://b.com"]
 
 
+def test_web_search_no_topics(monkeypatch):
+    def fake_get(url, timeout):
+        return _Resp({"RelatedTopics": []})
+
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    assert web_search("none") == []
+
+
 def test_web_search_handles_error(monkeypatch):
     def fake_get(url, timeout):
         raise requests.RequestException
+    monkeypatch.setattr(requests, "get", fake_get)
+
+    assert web_search("foo") == []
+
+
+def test_web_search_invalid_schema(monkeypatch):
+    def fake_get(url, timeout):
+        return _Resp({"bad": "data"})
+
     monkeypatch.setattr(requests, "get", fake_get)
 
     assert web_search("foo") == []

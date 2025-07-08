@@ -4,21 +4,29 @@ from urllib.parse import quote
 
 from pydantic import BaseModel, Field, TypeAdapter
 
-from modelAccessors.base_accessor import Tool
+from modelAccessors.data.tool import Tool
 
 MAX_RESULTS = 5
 MAX_ATTEMPTS = 2
 
-class _DDGTopic(BaseModel):
-    FirstURL: Optional[str] = None
-    Topics: List["_DDGTopic"] = Field(default_factory=list)
+class _SearchTopic(BaseModel):
+    url: Optional[str] = Field(None, alias="FirstURL")
+    subtopics: List["_SearchTopic"] = Field(default_factory=list, alias="Topics")
+
+    model_config = {
+        "populate_by_name": True,
+    }
 
 
-class _DDGResponse(BaseModel):
-    RelatedTopics: List[_DDGTopic] = Field(default_factory=list)
+class _SearchResponse(BaseModel):
+    topics: List[_SearchTopic] = Field(default_factory=list, alias="RelatedTopics")
+
+    model_config = {
+        "populate_by_name": True,
+    }
 
 
-_DDGTopic.model_rebuild()
+_SearchTopic.model_rebuild()
 
 
 def _fetch(query: str) -> List[str]:
@@ -27,16 +35,16 @@ def _fetch(query: str) -> List[str]:
     )
     resp = requests.get(api_url, timeout=5)
     resp.raise_for_status()
-    ddg = TypeAdapter(_DDGResponse).validate_python(resp.json())
+    parsed = TypeAdapter(_SearchResponse).validate_python(resp.json())
 
     results: List[str] = []
-    queue = ddg.RelatedTopics.copy()
+    queue = parsed.topics.copy()
     while queue and len(results) < MAX_RESULTS:
         item = queue.pop(0)
-        if item.FirstURL:
-            results.append(item.FirstURL)
-        if item.Topics:
-            queue.extend(item.Topics)
+        if item.url:
+            results.append(item.url)
+        if item.subtopics:
+            queue.extend(item.subtopics)
 
     return results
 
