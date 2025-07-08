@@ -9,7 +9,7 @@ from agentNodes.reviewer import Reviewer
 from agentNodes.tester import Tester
 from agentNodes.deployer import Deployer
 from dataModel.task import Task, TaskType
-from dataModel.model_response import ModelResponse, DecomposedResponse, ImplementedResponse
+from dataModel.model_response import ModelResponse, DecomposedResponse, ImplementedResponse, FollowUpResponse
 
 
 class _StubAccessor(BaseModelAccessor):
@@ -34,8 +34,16 @@ def _hld_call_model(prompt: str, schema):
         return DecomposedResponse(subtasks=subtasks)
     return ImplementedResponse(content="outline")
 
+
+def _clarify_call_model(prompt: str, schema):
+    if "?" in prompt:
+        return FollowUpResponse(
+            follow_up_ask=Task(id="root-fu", description="Need more info", type=TaskType.REQUIREMENTS)
+        )
+    return ImplementedResponse(content="Requirements are clear")
+
 NODE_REGISTRY = {
-    "clarify": Clarifier(),
+    "clarify": Clarifier(_StubAccessor(_clarify_call_model)),
     "research": Researcher(),
     "hld": HLDDesigner(_StubAccessor(_hld_call_model)),
     "implement": Implementer(),
