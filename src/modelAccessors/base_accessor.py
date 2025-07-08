@@ -1,12 +1,14 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict, List
 
-class Tool:
-    """Definition of a tool that can be used by a model"""
-    def __init__(self, name: str, description: str, parameters: Optional[Dict[str, Any]] = None):
-        self.name = name
-        self.description = description
-        self.parameters = parameters or {}
+from pydantic import BaseModel, Field
+
+class Tool(BaseModel):
+    """Definition of a tool that can be used by a model."""
+
+    name: str
+    description: str
+    parameters: Dict[str, Any] = Field(default_factory=dict)
 
 class BaseModelAccessor(ABC):
     @abstractmethod

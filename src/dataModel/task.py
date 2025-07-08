@@ -1,9 +1,11 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, List
 
 from pydantic import BaseModel, Field, model_validator
+
+from modelAccessors.base_accessor import Tool
 
 
 class TaskType(str, Enum):
@@ -40,6 +42,7 @@ class Task(BaseModel):
     complexity: int = 1
     parent_id: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
+    tools: List[Tool] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def _validate_complexity(cls, model: "Task") -> "Task":
