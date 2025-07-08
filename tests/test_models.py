@@ -9,6 +9,7 @@ from dataModel import (
     FollowUpResponse,
     FailedResponse,
 )
+from tools.web_search import WEB_SEARCH_TOOL
 
 
 def build_task(task_id: str = "t1") -> Task:
@@ -43,3 +44,8 @@ def test_model_response_round_trip_and_discriminator(cls, kwargs, tag):
     restored = cls.model_validate(packed)
     assert restored == orig
     assert packed["response_type"] == tag
+
+
+def test_task_allows_tools():
+    task = Task(id="tool", description="d", type=TaskType.RESEARCH, tools=[WEB_SEARCH_TOOL])
+    assert task.tools == [WEB_SEARCH_TOOL]

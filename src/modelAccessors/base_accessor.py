@@ -1,12 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Any, Optional, Dict, List
 
-class Tool:
-    """Definition of a tool that can be used by a model"""
-    def __init__(self, name: str, description: str, parameters: Optional[Dict[str, Any]] = None):
-        self.name = name
-        self.description = description
-        self.parameters = parameters or {}
+from .data.tool import Tool
 
 class BaseModelAccessor(ABC):
     @abstractmethod
