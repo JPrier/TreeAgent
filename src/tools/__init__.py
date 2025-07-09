@@ -4,6 +4,13 @@ from .env_tools import (
     PYTHON_REQUIREMENTS_TOOL,
     NPM_INSTALL_TOOL,
 )
+from .file_io import (
+    FileManager,
+    READ_FILE_TOOL,
+    WRITE_FILE_TOOL,
+    read_file,
+    write_file,
+)
 
 __all__ = [
     "WEB_SEARCH_TOOL",
@@ -11,4 +18,9 @@ __all__ = [
     "EnvManager",
     "PYTHON_REQUIREMENTS_TOOL",
     "NPM_INSTALL_TOOL",
+    "FileManager",
+    "READ_FILE_TOOL",
+    "WRITE_FILE_TOOL",
+    "read_file",
+    "write_file",
 ]
