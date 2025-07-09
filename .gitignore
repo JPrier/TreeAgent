@@ -194,5 +194,6 @@ cython_debug/
 .cursorignore
 .cursorindexingignore
 
-# Adding a directory for myself to dump any useful files that are not part of the project
-.ai_slop/
+# Adding a directory for myself to dump any useful files that are not part of the project.ai_slop/
+# Ignore obsolete agent_nodes directory
+src/agent_nodes/

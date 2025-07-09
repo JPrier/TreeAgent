@@ -1,7 +1,7 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from agent_nodes.researcher import Researcher
+from agentNodes.researcher import Researcher
 from tools.web_search import WEB_SEARCH_TOOL
 from dataModel.model_response import ImplementedResponse
 from dataModel.task import Task, TaskType
