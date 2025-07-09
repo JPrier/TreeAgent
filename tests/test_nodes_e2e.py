@@ -13,17 +13,22 @@ from dataModel.model_response import ModelResponse, DecomposedResponse, Implemen
 
 
 class _StubAccessor(BaseModelAccessor):
-    def __init__(self, callback):
-        self._callback = callback
+    def __init__(self, call_model_callback=None, exec_with_tools_callback=None):
+        self._call_model_callback = call_model_callback
+        self._exec_with_tools_callback = exec_with_tools_callback
 
     def call_model(self, prompt: str, schema):
-        return self._callback(prompt, schema)
+        if not self._call_model_callback:
+            raise NotImplementedError()
+        return self._call_model_callback(prompt, schema)
 
     def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
         raise NotImplementedError()
 
     def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):
-        raise NotImplementedError()
+        if not self._exec_with_tools_callback:
+            raise NotImplementedError()
+        return self._exec_with_tools_callback(model, system_prompt, user_prompt, tools)
 
 def _hld_call_model(prompt: str, schema):
     if "Complexity: 2" in prompt:
@@ -42,9 +47,13 @@ def _clarify_call_model(prompt: str, schema):
         )
     return ImplementedResponse(content="Requirements are clear")
 
+
+def _research_exec(model: str, system_prompt: str, user_prompt: str, tools=None):
+    return ImplementedResponse(artifacts=["https://example.com"])
+
 NODE_REGISTRY = {
     "clarify": Clarifier(_StubAccessor(_clarify_call_model)),
-    "research": Researcher(),
+    "research": Researcher(_StubAccessor(exec_with_tools_callback=_research_exec)),
     "hld": HLDDesigner(_StubAccessor(_hld_call_model)),
     "implement": Implementer(),
     "review": Reviewer(),
