@@ -1,5 +1,11 @@
 from pydantic import BaseModel
-from .dataModel.model_response import ModelResponse, ModelResponseType
+from .dataModel.model_response import (
+    ModelResponse,
+    ModelResponseType,
+    DecomposedResponse,
+    ImplementedResponse,
+    FailedResponse,
+)
 from .agent_node import AgentNode
 from .dataModel.task import Task, TaskType, TaskStatus
 from .dataModel.model import AccessorType, Model
@@ -53,7 +59,7 @@ class AgentOrchestrator:
         
         if response is None:
             # Handle case where execution failed
-            project: Project = Project(
+            project = Project(
                 failedTasks=[root_task],
                 completedTasks=[],
                 inProgressTasks=[],
@@ -61,7 +67,7 @@ class AgentOrchestrator:
             )
             return project
 
-        project: Project = Project(
+        project = Project(
             failedTasks=[],
             completedTasks=[],
             inProgressTasks=[],
@@ -95,7 +101,7 @@ class AgentOrchestrator:
             task_accessor = self._get_accessor(current_task.model.accessor_type)
             
             # Create an agent node for the current task with the appropriate accessor
-            agent = AgentNode(agent_id=current_task.task_id, accessor=task_accessor)
+            agent = AgentNode(agent_id=current_task.id, accessor=task_accessor)
             
             # Execute the task using the agent
             task_response: ModelResponse | None = agent.execute_task(current_task)
@@ -132,10 +138,10 @@ class AgentOrchestrator:
         :return: A Task object representing the root task.
         """
         return Task(
-            task_id="root-task",
-            task_type=TaskType.DECOMPOSE,
-            prompt=project_prompt,
-            model=Model()  # Use default model
+            id="root-task",
+            type=TaskType.DECOMPOSE,
+            description=project_prompt,
+            model=Model(),  # Use default model
         )
 
 if __name__ == "__main__":

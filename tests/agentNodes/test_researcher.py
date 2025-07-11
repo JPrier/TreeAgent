@@ -20,7 +20,9 @@ class _StubAccessor(BaseModelAccessor):
 
 
 def test_researcher_returns_urls():
-    accessor = _StubAccessor(ImplementedResponse(artifacts=["https://foo.com", "https://bar.com"]))
+    accessor = _StubAccessor(
+        ImplementedResponse(artifacts=["https://foo.com", "https://bar.com"])
+    )
     node = Researcher(accessor)
 
     task = Task(id="r1", description="search", type=TaskType.RESEARCH)

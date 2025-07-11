@@ -1,6 +1,9 @@
 from typing import Any, Dict
 
-from dataModel.model_response import ImplementedResponse, FailedResponse
+from dataModel.model_response import (
+    ImplementedResponse,
+    FailedResponse,
+)
 
 
 class Reviewer:

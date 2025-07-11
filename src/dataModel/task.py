@@ -4,6 +4,7 @@ from enum import Enum
 from typing import Optional, List
 
 from pydantic import BaseModel, Field, model_validator
+from .model import Model
 
 from modelAccessors.data.tool import Tool
 
@@ -17,6 +18,12 @@ class TaskType(str, Enum):
     REVIEW = "review"
     TEST = "test"
     DEPLOY = "deploy"
+    IMPLEMENT_CODE = "implement_code"
+    DESIGN_CODE = "design_code"
+    DECOMPOSE = "decompose"
+    RESEARCH_CODE = "research_code"
+    VALIDATE_CODE = "validate_code"
+    DOCUMENT = "document"
 
 
 class TaskStatus(str, Enum):
@@ -43,9 +50,11 @@ class Task(BaseModel):
     parent_id: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
     tools: List[Tool] = Field(default_factory=list)
+    model: Model = Field(default_factory=Model)
+    result: Optional[str] = None
 
     @model_validator(mode="after")
-    def _validate_complexity(cls, model: "Task") -> "Task":
-        if model.complexity < 1:
+    def _validate_complexity(self) -> "Task":
+        if self.complexity < 1:
             raise ValueError("complexity must be >= 1")
-        return model
+        return self

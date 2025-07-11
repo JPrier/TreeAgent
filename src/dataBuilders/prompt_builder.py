@@ -14,16 +14,16 @@ class PromptBuilder:
             "response_type": "decomposed",
             "subtasks": [
                 {
-                    "task_id": "t1",
-                    "task_type": "implement",
+                    "id": "t1",
+                    "type": "implement",
                     "agent_description": "You are a senior engineer...",
-                    "prompt": "Write a function to add two numbers"
+                    "description": "Write a function to add two numbers",
                 }
             ]
         }
         self.example_implemented: dict[str, Any] = {
             "response_type": "implemented",
-            "summary": "Function add(a, b) implemented with docstring and tests."
+            "content": "Function add(a, b) implemented with docstring and tests.",
         }
         self.example_failed: dict[str, Any] = {
             "response_type": "failed",
@@ -32,7 +32,7 @@ class PromptBuilder:
         }
 
     def build(self, task: Task) -> str:
-        match task.task_type:
+        match task.type:
             case TaskType.IMPLEMENT_CODE:
                 return self._build_implement_code_prompt(task)
             case TaskType.DESIGN_CODE:
@@ -46,7 +46,7 @@ class PromptBuilder:
             case TaskType.DOCUMENT:
                 return self._build_document_prompt(task)
             case _:
-                raise ValueError(f"Unhandled TaskType: {task.task_type}")
+                raise ValueError(f"Unhandled TaskType: {task.type}")
             
     def build_system_prompt(self, task: Task) -> str:
         base = {
@@ -59,7 +59,7 @@ class PromptBuilder:
             TaskType.RESEARCH_CODE: "You are a researcher. Gather accurate, recent info and cite sources.",
             TaskType.VALIDATE_CODE: "You are a code reviewer. Analyze output, flag issues, suggest improvements.",
             TaskType.DOCUMENT: "You are a documentation expert. Write clear, developer-friendly documentation.",
-        }.get(task.task_type, "You are an expert assistant.")
+        }.get(task.type, "You are an expert assistant.")
 
         schema_str = json.dumps(self.schema, indent=2)
         return (
@@ -77,28 +77,28 @@ class PromptBuilder:
         )
 
     def _build_implement_code_prompt(self, task: Task) -> str:
-        body = f"Implement the following request:\n{task.prompt}"
+        body = f"Implement the following request:\n{task.description}"
         return self._with_example(body, self.example_implemented)
 
     def _build_design_code_prompt(self, task: Task) -> str:
-        body = f"Design a solution for:\n{task.prompt}"
+        body = f"Design a solution for:\n{task.description}"
         return self._with_example(body, self.example_implemented)
 
     def _build_decompose_prompt(self, task: Task) -> str:
         body = (
-            f"Consider task:\n{task.prompt}\n\n"
+            f"Consider task:\n{task.description}\n\n"
             "If complex, decompose it; if simple, implement or fail as appropriate."
         )
         return self._with_example(body, self.example_decomposed)
 
     def _build_research_code_prompt(self, task: Task) -> str:
-        body = f"Conduct research on:\n{task.prompt}"
+        body = f"Conduct research on:\n{task.description}"
         return self._with_example(body, self.example_implemented)
 
     def _build_validate_code_prompt(self, task: Task) -> str:
-        body = f"Validate the following:\n{task.prompt}"
+        body = f"Validate the following:\n{task.description}"
         return self._with_example(body, self.example_implemented)
 
     def _build_document_prompt(self, task: Task) -> str:
-        body = f"Write documentation for:\n{task.prompt}"
+        body = f"Write documentation for:\n{task.description}"
         return self._with_example(body, self.example_implemented)

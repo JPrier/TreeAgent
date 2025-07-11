@@ -3,6 +3,7 @@
 from .task import TaskType, Task, TaskStatus
 from .model_response import (
     ModelResponse,
+    ModelResponseType,
     DecomposedResponse,
     ImplementedResponse,
     FollowUpResponse,
@@ -13,6 +14,7 @@ __all__ = [
     "TaskType",
     "Task",
     "ModelResponse",
+    "ModelResponseType",
     "DecomposedResponse",
     "ImplementedResponse",
     "FollowUpResponse",

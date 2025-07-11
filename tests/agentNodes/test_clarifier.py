@@ -1,7 +1,10 @@
 from agentNodes.clarifier import Clarifier
 from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.task import Task, TaskType
-from dataModel.model_response import FollowUpResponse, ImplementedResponse
+from dataModel.model_response import (
+    FollowUpResponse,
+    ImplementedResponse,
+)
 
 
 class _StubAccessor(BaseModelAccessor):
@@ -19,7 +22,11 @@ def test_needs_followup(monkeypatch):
     follow_up = Task(id="t1-fu", description="Need more details", type=TaskType.REQUIREMENTS)
     accessor = _StubAccessor()
     node = Clarifier(accessor)
-    monkeypatch.setattr(node.llm_accessor, "call_model", lambda prompt, schema: FollowUpResponse(follow_up_ask=follow_up))
+    monkeypatch.setattr(
+        node.llm_accessor,
+        "call_model",
+        lambda prompt, schema: FollowUpResponse(follow_up_ask=follow_up),
+    )
     task = Task(id="t1", description="Build app?", type=TaskType.REQUIREMENTS)
 
     res = node.execute_task(task)
@@ -31,7 +38,11 @@ def test_needs_followup(monkeypatch):
 def test_no_followup(monkeypatch):
     accessor = _StubAccessor()
     node = Clarifier(accessor)
-    monkeypatch.setattr(node.llm_accessor, "call_model", lambda prompt, schema: ImplementedResponse(content="Requirements are clear"))
+    monkeypatch.setattr(
+        node.llm_accessor,
+        "call_model",
+        lambda prompt, schema: ImplementedResponse(content="Requirements are clear"),
+    )
     task = Task(id="t2", description="All good", type=TaskType.REQUIREMENTS)
 
     res = node.execute_task(task)

@@ -4,6 +4,7 @@ from .dataBuilders.prompt_builder import PromptBuilder
 from .dataModel.model_response import (
     ModelResponse,
     ModelResponseType,
+    DecomposedResponse,
     FailedResponse,
     ImplementedResponse,
 )
@@ -29,10 +30,10 @@ class AgentNode:
         #     * Add an accessor to run for each
         #   * Decide which tasks should have tools and which should just use chat - ex: Decomposition could use no tools but would need context
 
-        if task.task_type == TaskType.VALIDATE_CODE:
+        if task.type == TaskType.VALIDATE_CODE:
             return self.run_code_validation(task)
-        
-        if task.task_type == TaskType.DECOMPOSE:
+
+        if task.type == TaskType.DECOMPOSE:
             return self.run_llm_chat(task)
 
         if not task.tools or len(task.tools) == 0:
@@ -45,12 +46,16 @@ class AgentNode:
         validation_results = code_validator.validate_code() # need a way to pass the code to validate (ideally the entire project)
         if validation_results.is_valid:
             task.status = TaskStatus.COMPLETED
-            return ImplementedResponse(summary="Code validation passed successfully")
+            return ImplementedResponse(content="Code validation passed successfully")
         else:
             task.status = TaskStatus.FAILED
             # Convert the errors list to a string
-            task.result = str(validation_results.errors) if validation_results.errors else "Validation failed"
-            error_msg = str(validation_results.errors) if validation_results.errors else "Validation failed"
+            task.result = (
+                str(validation_results.errors) if validation_results.errors else "Validation failed"
+            )
+            error_msg = (
+                str(validation_results.errors) if validation_results.errors else "Validation failed"
+            )
             return FailedResponse(error_message=error_msg, retryable=True)
 
     def run_llm_agent(self, task: Task) -> ModelResponse:
@@ -87,13 +92,14 @@ class AgentNode:
                     task.status = TaskStatus.FAILED
                     return task
                 for subtask in response.subtasks:
-                    subtask.task_id = f"{task.task_id}-{subtask.task_type}"
+                    subtask.id = f"{task.id}-{subtask.type}"
                     # TODO: Add subtask to project queue or execute immediately
             case ModelResponseType.IMPLEMENTED:
                 task.status = TaskStatus.COMPLETED
-                # TODO: If parent requested details share summary -- does this condition matter here? 
             case ModelResponseType.FAILED:
-                task.status = TaskStatus.FAILED if not response.retryable else TaskStatus.PENDING
+                task.status = (
+                    TaskStatus.FAILED if not response.retryable else TaskStatus.PENDING
+                )
             case _:
                 task.status = TaskStatus.FAILED
         return task
