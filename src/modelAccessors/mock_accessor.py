@@ -1,5 +1,5 @@
 from .base_accessor import BaseModelAccessor, Tool
-from typing import Optional, List, Any
+from typing import Optional, List
 from ..dataModel.model_response import ModelResponse, DecomposedResponse, ImplementedResponse
 from ..dataModel.task import Task, TaskType
 

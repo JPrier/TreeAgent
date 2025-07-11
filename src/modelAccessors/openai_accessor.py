@@ -1,5 +1,5 @@
 from os import environ
-from typing import Any, Optional, Dict, List
+from typing import Optional, List
 from openai import OpenAI
 from openai.types.chat import ChatCompletionToolParam
 from pydantic import TypeAdapter

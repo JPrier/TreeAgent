@@ -1,7 +1,12 @@
 from .modelAccessors.base_accessor import BaseModelAccessor
 from .dataModel.task import Task, TaskType, TaskStatus
 from .dataBuilders.prompt_builder import PromptBuilder
-from .dataModel.model_response import ModelResponse, ModelResponseType, DecomposedResponse, FailedResponse, ImplementedResponse
+from .dataModel.model_response import (
+    ModelResponse,
+    ModelResponseType,
+    FailedResponse,
+    ImplementedResponse,
+)
 from .validators.python_code_validator import PythonCodeValidator
 
 class AgentNode:

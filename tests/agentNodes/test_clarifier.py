@@ -1,4 +1,3 @@
-from pydantic import TypeAdapter
 from agentNodes.clarifier import Clarifier
 from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.task import Task, TaskType
