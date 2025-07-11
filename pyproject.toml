@@ -7,7 +7,7 @@ name = "tree-agent"
 version = "0.1.0"
 description = "AI Agent Tree Orchestrator"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 license = {file = "LICENSE"}
 dependencies = [
     "pydantic>=2.0.0",
