@@ -1,150 +1,86 @@
-from pydantic import BaseModel
-from .dataModel.model_response import ModelResponse, ModelResponseType
-from .agent_node import AgentNode
-from .dataModel.task import Task, TaskType, TaskStatus
-from .dataModel.model import AccessorType, Model
-from .modelAccessors.base_accessor import BaseModelAccessor
-from .modelAccessors.openai_accessor import OpenAIAccessor
-from .modelAccessors.anthropic_accessor import AnthropicAccessor
+from __future__ import annotations
+
+from typing import Optional, TypedDict, Dict, Callable, Any
+
+from langgraph.graph import StateGraph, END
+from pydantic import TypeAdapter
+
+from .dataModel.task import Task, TaskType
+from .dataModel.model_response import ModelResponse
+from .agentNodes.clarifier import Clarifier
+from .agentNodes.researcher import Researcher
+from .agentNodes.hld_designer import HLDDesigner
+from .agentNodes.implementer import Implementer
+from .agentNodes.reviewer import Reviewer
+from .agentNodes.tester import Tester
+from .agentNodes.deployer import Deployer
 from .modelAccessors.mock_accessor import MockAccessor
 
-class Project(BaseModel):
-    failedTasks:     list[Task]
-    completedTasks:  list[Task]
-    inProgressTasks: list[Task]
-    queuedTasks:     list[Task]
+
+class OrchestratorState(TypedDict):
+    root_task: Task
+    task_queue: list[Task]
+    last_response: Optional[ModelResponse]
+
 
 class AgentOrchestrator:
-    def __init__(self):
-        # Initialize the orchestrator - no setup needed currently
-        pass
-    
-    def _get_accessor(self, accessor_type: AccessorType) -> BaseModelAccessor:
-        """Get the appropriate accessor for the given accessor type."""
-        match accessor_type:
-            case AccessorType.OPENAI:
-                return OpenAIAccessor()
-            case AccessorType.ANTHROPIC:
-                return AnthropicAccessor()
-            case AccessorType.MOCK:
-                return MockAccessor()
-            case _:
-                raise ValueError(f"Unknown accessor type: {accessor_type}")
+    """Simple orchestrator built using LangGraph."""
 
-    def implement_project(self, project_prompt: str) -> Project:
-        """
-        Orchestrates the implementation of a project by decomposing it into tasks,
-        assigning them to agents, and collecting their responses.
-        
-        :param project_prompt: The initial prompt describing the project.
-        :return: Summary of the implemented project.
-        """
-        # Create the root task
-        root_task: Task = self.create_root_task(project_prompt)
-        
-        # Get the appropriate accessor for the root task's model
-        accessor = self._get_accessor(root_task.model.accessor_type)
-        
-        # Create an agent node for the orchestrator with the appropriate accessor
-        orchestrator_agent = AgentNode(agent_id="orchestrator", accessor=accessor)
+    def __init__(self) -> None:
+        accessor = MockAccessor()
+        self._nodes: Dict[TaskType, Callable[[dict, Any], dict]] = {
+            TaskType.REQUIREMENTS: Clarifier(accessor),
+            TaskType.RESEARCH: Researcher(accessor),
+            TaskType.HLD: HLDDesigner(accessor),
+            TaskType.IMPLEMENT: Implementer(),
+            TaskType.REVIEW: Reviewer(),
+            TaskType.TEST: Tester(),
+            TaskType.DEPLOY: Deployer(),
+        }
+        self._adapter = TypeAdapter(ModelResponse)
 
-        # Have the orchestrator agent execute the root task (Decompose)
-        response: ModelResponse | None = orchestrator_agent.execute_task(root_task)
-        
-        if response is None:
-            # Handle case where execution failed
-            project: Project = Project(
-                failedTasks=[root_task],
-                completedTasks=[],
-                inProgressTasks=[],
-                queuedTasks=[]
-            )
-            return project
+    def _process_task(self, state: OrchestratorState) -> dict:
+        if not state["task_queue"]:
+            return {}
+        task = state["task_queue"].pop(0)
+        node = self._nodes.get(task.type)
+        if node is None:
+            raise ValueError(f"No node for task type {task.type}")
+        result = node(state)
+        state["last_response"] = self._adapter.validate_python(result)
+        return {"task_queue": state["task_queue"], "last_response": state["last_response"]}
 
-        project: Project = Project(
-            failedTasks=[],
-            completedTasks=[],
-            inProgressTasks=[],
-            queuedTasks=[]
-        )
+    def _queue_check(self, state: dict) -> str:
+        return "continue" if state["task_queue"] else "end"
 
-        # Handle the response from the agent
-        match response.response_type:
-            case ModelResponseType.DECOMPOSED:
-                root_task.status = TaskStatus.IN_PROGRESS
-                project.queuedTasks.extend(response.subtasks)
-            case ModelResponseType.IMPLEMENTED:
-                root_task.status = TaskStatus.COMPLETED
-                project.completedTasks.append(root_task)
-                return project
-            case ModelResponseType.FAILED:
-                if response.retryable:
-                    root_task.status = TaskStatus.PENDING
-                    project.queuedTasks.append(root_task)
-                else:
-                    root_task.status = TaskStatus.FAILED
-                    project.failedTasks.append(root_task)
-            
-        while project.queuedTasks:
-            # Pop the next task from the queue
-            current_task: Task = project.queuedTasks.pop(0)
-            current_task.status = TaskStatus.IN_PROGRESS
-            project.inProgressTasks.append(current_task)
-            
-            # Get the appropriate accessor for the current task's model
-            task_accessor = self._get_accessor(current_task.model.accessor_type)
-            
-            # Create an agent node for the current task with the appropriate accessor
-            agent = AgentNode(agent_id=current_task.task_id, accessor=task_accessor)
-            
-            # Execute the task using the agent
-            task_response: ModelResponse | None = agent.execute_task(current_task)
-            
-            # Handle the response based on its type
-            project.inProgressTasks.remove(current_task)
-            
-            if task_response is None:
-                current_task.status = TaskStatus.FAILED
-                project.failedTasks.append(current_task)
-                continue
-                
-            match task_response.response_type:
-                case ModelResponseType.DECOMPOSED:
-                    current_task.status = TaskStatus.IN_PROGRESS
-                    project.queuedTasks.extend(task_response.subtasks)
-                case ModelResponseType.IMPLEMENTED:
-                    current_task.status = TaskStatus.COMPLETED
-                    project.completedTasks.append(current_task)
-                case ModelResponseType.FAILED:
-                    if task_response.retryable:
-                        current_task.status = TaskStatus.PENDING
-                        project.queuedTasks.append(current_task)
-                    else:
-                        current_task.status = TaskStatus.FAILED
-                        project.failedTasks.append(current_task)
-        return project
-    
-    def create_root_task(self, project_prompt: str) -> Task:
-        """
-        Creates the root task for the project based on the initial project prompt.
-        
-        :param project_prompt: The initial prompt describing the project.
-        :return: A Task object representing the root task.
-        """
-        return Task(
-            task_id="root-task",
-            task_type=TaskType.DECOMPOSE,
-            prompt=project_prompt,
-            model=Model()  # Use default model
-        )
+    def implement_project(self, project_prompt: str) -> OrchestratorState:
+        tasks = [
+            Task(id="root", description=project_prompt, type=TaskType.REQUIREMENTS),
+            Task(id="research", description="Gather information", type=TaskType.RESEARCH),
+            Task(id="design", description="Create high level design", type=TaskType.HLD, complexity=1),
+            Task(id="implement", description="Implement features", type=TaskType.IMPLEMENT),
+            Task(id="review", description="Review code", type=TaskType.REVIEW),
+            Task(id="test", description="Test code", type=TaskType.TEST),
+            Task(id="deploy", description="Deploy application", type=TaskType.DEPLOY),
+        ]
+        state: OrchestratorState = {
+            "root_task": tasks[0],
+            "task_queue": tasks,
+            "last_response": None,
+        }
 
-if __name__ == "__main__":
+        graph_builder = StateGraph(OrchestratorState)
+        graph_builder.add_node("step", self._process_task)
+        graph_builder.add_node("check", lambda s: s)
+        graph_builder.add_edge("step", "check")
+        graph_builder.add_conditional_edges("check", self._queue_check, {"continue": "step", "end": END})
+        graph_builder.set_entry_point("step")
+        graph = graph_builder.compile()
+        final_state = graph.invoke(state)
+        return final_state
+
+
+if __name__ == "__main__":  # pragma: no cover
     orchestrator = AgentOrchestrator()
-    example_prompt = "Build a simple web application with user authentication and a dashboard."
-    result_project = orchestrator.implement_project(example_prompt)
-    
-    print("Project Summary:")
-    print(f"Completed Tasks: {len(result_project.completedTasks)}")
-    print(f"In Progress Tasks: {len(result_project.inProgressTasks)}")
-    print(f"Failed Tasks: {len(result_project.failedTasks)}")
-    print(f"Queued Tasks: {len(result_project.queuedTasks)}")
+    result = orchestrator.implement_project("Build a web app")
+    print(result)
