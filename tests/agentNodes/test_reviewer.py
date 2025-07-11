@@ -1,7 +1,10 @@
 from pydantic import TypeAdapter
 
 from agentNodes.reviewer import Reviewer
-from dataModel.model_response import ImplementedResponse, FailedResponse
+from dataModel.model_response import (
+    ImplementedResponse,
+    FailedResponse,
+)
 
 
 def test_reviewer_approves():

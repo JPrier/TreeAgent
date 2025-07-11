@@ -9,7 +9,12 @@ from agentNodes.reviewer import Reviewer
 from agentNodes.tester import Tester
 from agentNodes.deployer import Deployer
 from dataModel.task import Task, TaskType
-from dataModel.model_response import ModelResponse, DecomposedResponse, ImplementedResponse, FollowUpResponse
+from dataModel.model_response import (
+    ModelResponse,
+    DecomposedResponse,
+    ImplementedResponse,
+    FollowUpResponse,
+)
 
 
 class _StubAccessor(BaseModelAccessor):

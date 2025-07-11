@@ -28,14 +28,26 @@ def test_task_complexity_validation():
 @pytest.mark.parametrize(
     "cls, kwargs, tag",
     [
-        (DecomposedResponse, {"subtasks": [build_task("sub")]}, "decomposed"),
-        (ImplementedResponse, {}, "implemented"),
+        (
+            DecomposedResponse,
+            {"subtasks": [build_task("sub")]},
+            "decomposed",
+        ),
+        (
+            ImplementedResponse,
+            {},
+            "implemented",
+        ),
         (
             FollowUpResponse,
             {"follow_up_ask": build_task("follow")},
             "follow_up_required",
         ),
-        (FailedResponse, {"error_message": "oops"}, "failed"),
+        (
+            FailedResponse,
+            {"error_message": "oops"},
+            "failed",
+        ),
     ],
 )
 def test_model_response_round_trip_and_discriminator(cls, kwargs, tag):
