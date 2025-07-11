@@ -1,10 +1,11 @@
 import builtins
 import io
 import os
+import threading
+import time
+from contextlib import contextmanager
 
 import tools.file_io as file_io
-from tools.file_io import FileManager
-
 
 def test_read_file_returns_contents(monkeypatch):
     def fake_open(path, mode="r", encoding=None):
@@ -53,15 +54,15 @@ def test_write_file_handles_error(monkeypatch):
 def test_lock_is_per_path(monkeypatch):
     paths = []
 
-    class FakeCtx:
-        def __init__(self, path):
-            self.path = path
-        def __enter__(self):
-            paths.append(self.path)
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
+    orig_lock = file_io._PathLocks.lock
 
-    monkeypatch.setattr(file_io._PathLocks, "lock", lambda p: FakeCtx(p))
+    @contextmanager
+    def tracking_lock(path):
+        paths.append(os.path.abspath(path))
+        with orig_lock(path):
+            yield
+
+    monkeypatch.setattr(file_io._PathLocks, "lock", tracking_lock)
 
     def fake_open(path, mode="r", encoding=None):
         return io.StringIO("x")
@@ -70,32 +71,18 @@ def test_lock_is_per_path(monkeypatch):
 
     file_io.read_file("/tmp/a")
     file_io.write_file("/tmp/b", "x")
-    assert paths == ["/tmp/a", "/tmp/b"]
+    expected = [os.path.abspath("/tmp/a"), os.path.abspath("/tmp/b")]
+    assert paths == expected
 
 
 def test_read_directory_lists(monkeypatch):
     monkeypatch.setattr(os, "listdir", lambda p: ["a", "b"])
-
-    class FakeCtx:
-        def __enter__(self):
-            pass
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-    monkeypatch.setattr(file_io._PathLocks, "lock", lambda p: FakeCtx())
     assert file_io.read_directory("/dir") == ["a", "b"]
 
 
 def test_write_directory_rename(monkeypatch):
     called = {}
-
-    class FakeCtx:
-        def __enter__(self):
-            pass
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-    monkeypatch.setattr(file_io._PathLocks, "lock", lambda p: FakeCtx())
+    
     monkeypatch.setattr(os, "rename", lambda a, b: called.setdefault("rename", (a, b)))
     assert file_io.write_directory("/dir", new_name="/new") is True
     assert called["rename"] == ("/dir", "/new")
@@ -104,14 +91,75 @@ def test_write_directory_rename(monkeypatch):
 def test_write_directory_delete(monkeypatch):
     called = {}
 
-    class FakeCtx:
-        def __enter__(self):
-            pass
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            pass
-
-    monkeypatch.setattr(file_io._PathLocks, "lock", lambda p: FakeCtx())
     monkeypatch.setattr(os, "rmdir", lambda p: called.setdefault("delete", p))
     assert file_io.write_directory("/dir", delete=True) is True
     assert called["delete"] == "/dir"
 
+def test_lock_blocks_subpath(tmp_path):
+    parent = tmp_path / "parent"
+    parent.mkdir()
+    child = parent / "child.txt"
+    child.touch()
+    acquired = []
+
+    def worker():
+        with file_io._PathLocks.lock(child):
+            acquired.append("child")
+
+    t = threading.Thread(target=worker)
+    with file_io._PathLocks.lock(parent):
+        t.start()
+        time.sleep(0.05)
+        assert not acquired
+    t.join()
+    assert acquired == ["child"]
+
+
+def test_lock_blocks_parent(tmp_path):
+    parent = tmp_path / "parent"
+    parent.mkdir()
+    child = parent / "child.txt"
+    child.touch()
+    acquired = []
+
+    def worker():
+        with file_io._PathLocks.lock(parent):
+            acquired.append("parent")
+
+    t = threading.Thread(target=worker)
+    with file_io._PathLocks.lock(child):
+        t.start()
+        time.sleep(0.05)
+        assert not acquired
+    t.join()
+    assert acquired == ["parent"]
+
+
+def test_locks_allow_unrelated_paths(tmp_path):
+    a = tmp_path / "a.txt"
+    b = tmp_path / "b.txt"
+    a.touch()
+    b.touch()
+    order = []
+    started = threading.Event()
+
+    def hold_a():
+        with file_io._PathLocks.lock(a):
+            order.append("a")
+            started.set()
+            time.sleep(0.05)
+
+    def hold_b():
+        started.wait()
+        with file_io._PathLocks.lock(b):
+            order.append("b")
+
+    t1 = threading.Thread(target=hold_a)
+    t2 = threading.Thread(target=hold_b)
+    start = time.monotonic()
+    t1.start()
+    t2.start()
+    t1.join()
+    t2.join()
+    assert set(order) == {"a", "b"}
+    assert time.monotonic() - start < 0.1
