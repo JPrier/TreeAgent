@@ -7,7 +7,6 @@ from contextlib import contextmanager
 
 import tools.file_io as file_io
 
-
 def test_read_file_returns_contents(monkeypatch):
     def fake_open(path, mode="r", encoding=None):
         assert path == "/tmp/foo.txt"
@@ -83,6 +82,7 @@ def test_read_directory_lists(monkeypatch):
 
 def test_write_directory_rename(monkeypatch):
     called = {}
+    
     monkeypatch.setattr(os, "rename", lambda a, b: called.setdefault("rename", (a, b)))
     assert file_io.write_directory("/dir", new_name="/new") is True
     assert called["rename"] == ("/dir", "/new")
@@ -90,11 +90,10 @@ def test_write_directory_rename(monkeypatch):
 
 def test_write_directory_delete(monkeypatch):
     called = {}
+
     monkeypatch.setattr(os, "rmdir", lambda p: called.setdefault("delete", p))
     assert file_io.write_directory("/dir", delete=True) is True
     assert called["delete"] == "/dir"
-
-
 
 def test_lock_blocks_subpath(tmp_path):
     parent = tmp_path / "parent"
