@@ -4,7 +4,6 @@ from .dataBuilders.prompt_builder import PromptBuilder
 from .dataModel.model_response import (
     ModelResponse,
     ModelResponseType,
-    DecomposedResponse,
     FailedResponse,
     ImplementedResponse,
 )
