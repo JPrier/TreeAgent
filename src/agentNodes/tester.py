@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from dataModel.model_response import ImplementedResponse
 
@@ -8,6 +8,6 @@ class Tester:
 
     SCHEMA = ImplementedResponse
 
-    def __call__(self, state: Dict[str, Any], config: Dict[str, Any] | None = None) -> dict:
+    def __call__(self, state: dict[str, Any], config: dict[str, Any] | None = None) -> dict:
         resp = ImplementedResponse(content="pytest passed")
         return resp.model_dump()

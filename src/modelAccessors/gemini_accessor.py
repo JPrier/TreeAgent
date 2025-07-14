@@ -1,6 +1,6 @@
 from os import environ
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Optional
 from pydantic import TypeAdapter
 import google.generativeai as genai
 from .base_accessor import BaseModelAccessor, Tool
@@ -34,8 +34,13 @@ class GeminiAccessor(BaseModelAccessor):
             
         return TypeAdapter(ModelResponse).validate_python(json_content)
         
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, 
-                               tools: Optional[List[Tool]] = None) -> ModelResponse:
+    def execute_task_with_tools(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        tools: Optional[list[Tool]] = None,
+    ) -> ModelResponse:
         """Execute task with tools - native function calling if supported"""
         if not tools or not self.supports_tools(model):
             return self.prompt_model(model, system_prompt, user_prompt)
@@ -66,7 +71,7 @@ class GeminiAccessor(BaseModelAccessor):
         """Check if model supports function calling"""
         return model in self.tool_supported_models
         
-    def _convert_to_gemini_tools(self, tools: List[Tool]) -> List[Dict[str, Any]]:
+    def _convert_to_gemini_tools(self, tools: list[Tool]) -> list[Dict[str, Any]]:
         """Convert our Tool objects to Gemini's function format"""
         gemini_tools = []
         for tool in tools:

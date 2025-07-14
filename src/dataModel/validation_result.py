@@ -1,9 +1,9 @@
 from pydantic import BaseModel
-from typing import Optional, List, Any
+from typing import Optional, Any
 
 class ValidationResult(BaseModel):
     is_valid: bool
-    errors: Optional[List[Any]]
+    errors: Optional[list[Any]]
 
     def __init__(self, **data):
         super().__init__(**data)

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional, List
+from typing import Optional
 
 from pydantic import BaseModel, Field, model_validator
 from .model import Model
@@ -43,7 +43,7 @@ class Task(BaseModel):
     complexity: int = 1
     parent_id: Optional[str] = None
     metadata: dict = Field(default_factory=dict)
-    tools: List[Tool] = Field(default_factory=list)
+    tools: list[Tool] = Field(default_factory=list)
     model: Model = Field(default_factory=Model)
     result: Optional[str] = None
 

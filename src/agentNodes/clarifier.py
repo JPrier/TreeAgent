@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from modelAccessors.base_accessor import BaseModelAccessor
 
@@ -27,6 +27,6 @@ class Clarifier:
         )
         return result
 
-    def __call__(self, state: Dict[str, Any], config: Dict[str, Any] | None = None) -> dict:
+    def __call__(self, state: dict[str, Any], config: dict[str, Any] | None = None) -> dict:
         root_task: Task = state["root_task"]
         return self.execute_task(root_task).model_dump()

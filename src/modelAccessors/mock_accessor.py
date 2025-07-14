@@ -1,5 +1,5 @@
 from .base_accessor import BaseModelAccessor, Tool
-from typing import Optional, List
+from typing import Optional
 from ..dataModel.model_response import (
     ModelResponse,
     DecomposedResponse,
@@ -34,7 +34,13 @@ class MockAccessor(BaseModelAccessor):
         else:
             return ImplementedResponse(content="Mock implementation completed")
     
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[List[Tool]] = None) -> ModelResponse:
+    def execute_task_with_tools(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        tools: Optional[list[Tool]] = None,
+    ) -> ModelResponse:
         if tools and self.supports_tools(model):
             # Simulate using tools
             tool_names = [tool.name for tool in tools]

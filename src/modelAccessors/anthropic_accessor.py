@@ -1,5 +1,5 @@
 from os import environ
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict
 from pydantic import TypeAdapter
 from anthropic import Anthropic
 from .base_accessor import BaseModelAccessor, Tool
@@ -28,7 +28,13 @@ class AnthropicAccessor(BaseModelAccessor):
             
         return TypeAdapter(ModelResponse).validate_json(content)
         
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[List[Tool]] = None) -> ModelResponse:
+    def execute_task_with_tools(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        tools: Optional[list[Tool]] = None,
+    ) -> ModelResponse:
         """Execute task with tools - native tools if supported"""
         if not tools:
             return self.prompt_model(model, system_prompt, user_prompt)
@@ -62,7 +68,7 @@ class AnthropicAccessor(BaseModelAccessor):
         """Check if model supports native tool use"""
         return model in self.tool_supported_models
         
-    def _convert_to_claude_tools(self, tools: List[Tool]) -> List[Dict[str, Any]]:
+    def _convert_to_claude_tools(self, tools: list[Tool]) -> list[Dict[str, Any]]:
         """Convert our Tool objects to Claude's tool format"""
         claude_tools = []
         for tool in tools:
@@ -77,7 +83,7 @@ class AnthropicAccessor(BaseModelAccessor):
             })
         return claude_tools
         
-    def _format_tools_for_prompt(self, tools: List[Tool]) -> str:
+    def _format_tools_for_prompt(self, tools: list[Tool]) -> str:
         """Format tools into a readable description for the prompt"""
         tool_descriptions = []
         for tool in tools:

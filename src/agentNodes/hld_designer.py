@@ -1,4 +1,4 @@
-from typing import Any, Dict
+from typing import Any
 
 from modelAccessors.base_accessor import BaseModelAccessor
 
@@ -32,6 +32,6 @@ class HLDDesigner:
         response: ModelResponse = self.llm_accessor.call_model(prompt, HLDDesigner.SCHEMA)
         return response
 
-    def __call__(self, state: Dict[str, Any], config: Dict[str, Any] | None = None) -> dict:
+    def __call__(self, state: dict[str, Any], config: dict[str, Any] | None = None) -> dict:
         current_task: Task = state["task_queue"][0]
         return self.execute_task(current_task).model_dump()
