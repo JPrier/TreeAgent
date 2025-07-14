@@ -1,6 +1,10 @@
 from .base_accessor import BaseModelAccessor, Tool
-from typing import Optional, List
-from ..dataModel.model_response import ModelResponse, DecomposedResponse, ImplementedResponse
+from typing import Optional
+from ..dataModel.model_response import (
+    ModelResponse,
+    DecomposedResponse,
+    ImplementedResponse,
+)
 from ..dataModel.task import Task, TaskType
 
 class MockAccessor(BaseModelAccessor):
@@ -16,27 +20,35 @@ class MockAccessor(BaseModelAccessor):
             return DecomposedResponse(
                 subtasks=[
                     Task(
-                        task_id="mock-1", 
-                        task_type=TaskType.IMPLEMENT_CODE,
-                        prompt="Create authentication system"
+                        id="mock-1",
+                        type=TaskType.IMPLEMENT,
+                        description="Create authentication system",
                     ),
                     Task(
-                        task_id="mock-2", 
-                        task_type=TaskType.IMPLEMENT_CODE,
-                        prompt="Create dashboard interface"
-                    )
-                ]
+                        id="mock-2",
+                        type=TaskType.IMPLEMENT,
+                        description="Create dashboard interface",
+                    ),
+                ],
             )
         else:
-            return ImplementedResponse(summary="Mock implementation completed")
+            return ImplementedResponse(content="Mock implementation completed")
     
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[List[Tool]] = None) -> ModelResponse:
+    def execute_task_with_tools(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        tools: Optional[list[Tool]] = None,
+    ) -> ModelResponse:
         if tools and self.supports_tools(model):
             # Simulate using tools
             tool_names = [tool.name for tool in tools]
-            return ImplementedResponse(summary=f"Mock task completed using tools: {', '.join(tool_names)}")
+            return ImplementedResponse(
+                content=f"Mock task completed using tools: {', '.join(tool_names)}"
+            )
         else:
-            return ImplementedResponse(summary="Mock task with tools completed")
+            return ImplementedResponse(content="Mock task with tools completed")
     
     def supports_tools(self, model: str) -> bool:
         """Mock tool support for certain models"""

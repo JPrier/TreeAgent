@@ -1,5 +1,5 @@
 import requests
-from typing import List, Optional
+from typing import Optional
 from urllib.parse import quote
 
 from pydantic import BaseModel, Field, TypeAdapter
@@ -11,7 +11,7 @@ MAX_ATTEMPTS = 2
 
 class _SearchTopic(BaseModel):
     url: Optional[str] = Field(None, alias="FirstURL")
-    subtopics: List["_SearchTopic"] = Field(default_factory=list, alias="Topics")
+    subtopics: list["_SearchTopic"] = Field(default_factory=list, alias="Topics")
 
     model_config = {
         "populate_by_name": True,
@@ -19,7 +19,7 @@ class _SearchTopic(BaseModel):
 
 
 class _SearchResponse(BaseModel):
-    topics: List[_SearchTopic] = Field(default_factory=list, alias="RelatedTopics")
+    topics: list[_SearchTopic] = Field(default_factory=list, alias="RelatedTopics")
 
     model_config = {
         "populate_by_name": True,
@@ -29,7 +29,7 @@ class _SearchResponse(BaseModel):
 _SearchTopic.model_rebuild()
 
 
-def _fetch(query: str) -> List[str]:
+def _fetch(query: str) -> list[str]:
     api_url = (
         f"https://duckduckgo.com/?q={quote(query)}&format=json&no_redirect=1&skip_disambig=1"
     )
@@ -37,7 +37,7 @@ def _fetch(query: str) -> List[str]:
     resp.raise_for_status()
     parsed = TypeAdapter(_SearchResponse).validate_python(resp.json())
 
-    results: List[str] = []
+    results: list[str] = []
     queue = parsed.topics.copy()
     while queue and len(results) < MAX_RESULTS:
         item = queue.pop(0)
@@ -49,7 +49,7 @@ def _fetch(query: str) -> List[str]:
     return results
 
 
-def web_search(query: str) -> List[str]:
+def web_search(query: str) -> list[str]:
     """Search DuckDuckGo and return up to 5 result URLs."""
     for _ in range(MAX_ATTEMPTS):
         try:

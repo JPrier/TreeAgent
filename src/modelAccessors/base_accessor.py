@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Optional, List
+from typing import Any, Optional
 
 from .data.tool import Tool
 
@@ -10,7 +10,13 @@ class BaseModelAccessor(ABC):
         pass
 
     @abstractmethod
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[List[Tool]] = None) -> Any:
+    def execute_task_with_tools(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        tools: Optional[list[Tool]] = None,
+    ) -> Any:
         """
         Execute a task with available tools. The accessor handles whether to:
         1. Use native tool calling (for agentic models)

@@ -1,7 +1,6 @@
 from os import environ
-from typing import Optional, List
+from typing import Optional
 from openai import OpenAI
-from openai.types.chat import ChatCompletionToolParam
 from pydantic import TypeAdapter
 from .base_accessor import BaseModelAccessor, Tool
 from ..dataModel.model_response import ModelResponse
@@ -31,7 +30,13 @@ class OpenAIAccessor(BaseModelAccessor):
             
         return TypeAdapter(ModelResponse).validate_json(content) # type: ignore
 
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools: Optional[List[Tool]] = None) -> ModelResponse:
+    def execute_task_with_tools(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        tools: Optional[list[Tool]] = None,
+    ) -> ModelResponse:
         """
         Execute task with tools - using native function calling if supported
         """
@@ -61,9 +66,9 @@ class OpenAIAccessor(BaseModelAccessor):
         """Check if model supports native tools/function calling"""
         return model in self.tool_supported_models
         
-    def _convert_to_openai_tools(self, tools: List[Tool]) -> List[ChatCompletionToolParam]:
+    def _convert_to_openai_tools(self, tools: list[Tool]) -> list[dict[str, object]]:
         """Convert our Tool objects to OpenAI's tool format"""
-        openai_tools = []
+        openai_tools: list[dict[str, object]] = []
         for tool in tools:
             openai_tools.append({
                 "type": "function",
