@@ -21,12 +21,12 @@ class MockAccessor(BaseModelAccessor):
                 subtasks=[
                     Task(
                         id="mock-1",
-                        type=TaskType.IMPLEMENT_CODE,
+                        type=TaskType.IMPLEMENT,
                         description="Create authentication system",
                     ),
                     Task(
                         id="mock-2",
-                        type=TaskType.IMPLEMENT_CODE,
+                        type=TaskType.IMPLEMENT,
                         description="Create dashboard interface",
                     ),
                 ],

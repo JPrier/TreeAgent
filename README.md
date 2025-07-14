@@ -22,7 +22,7 @@ Why bother?
 
 | Area            | State | Notes |
 |-----------------|-------|-------|
-| Core data models (`Task`, `AgentNode`, `ModelResponse`) | ✅ Drafted | Pydantic schemas in `src/dataModel/` |
+| Core data models (`Task`, `ModelResponse`) | ✅ Drafted | Pydantic schemas in `src/dataModel/` |
 | Recursive orchestration (`AgentOrchestrator`)           | ✅ First pass | Needs error handling & logging |
 | Parallel execution logic                                | 🟡 Prototype | Sibling-task **non-concurrency** still WIP |
 | CLI / entry-point                                      | 🟥 Todo | Basic `python -m treeagent …` runner planned |
@@ -48,7 +48,6 @@ python -m treeagent.demo          # stub script prints skeleton task tree
 ```bash
 TreeAgent/
 ├── src/
-│   ├── agent_node.py       # base class for every node in the tree
 │   ├── agent_orchestrator.py
 │   ├── dataModel/          # pydantic task / response schemas
 │   └── ...

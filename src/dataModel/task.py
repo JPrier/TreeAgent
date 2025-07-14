@@ -18,12 +18,6 @@ class TaskType(str, Enum):
     REVIEW = "review"
     TEST = "test"
     DEPLOY = "deploy"
-    IMPLEMENT_CODE = "implement_code"
-    DESIGN_CODE = "design_code"
-    DECOMPOSE = "decompose"
-    RESEARCH_CODE = "research_code"
-    VALIDATE_CODE = "validate_code"
-    DOCUMENT = "document"
 
 
 class TaskStatus(str, Enum):
