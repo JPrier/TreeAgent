@@ -17,7 +17,9 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = []
+dev = [
+    "types-requests>=2.32",
+]
 
 [project.scripts]
 treeagent = "cli:main"
