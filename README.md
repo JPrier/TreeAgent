@@ -52,9 +52,23 @@ TreeAgent/
 │   ├── dataModel/          # pydantic task / response schemas
 │   └── ...
 ├── examples/               # minimal end-to-end scenarios (coming soon)
-├── tests/                  # pytest suite (empty for now)
+├── tests/                  # pytest suite
 ├── requirements.txt
 └── README.md
+```
+
+## 🧪 Running Tests
+
+Install the optional dev dependencies to enable coverage reporting:
+
+```bash
+pip install -e .[dev] pytest
+```
+
+Execute the suite with coverage enabled:
+
+```bash
+pytest --cov=src
 ```
 
 ## 🛣️ Roadmap
