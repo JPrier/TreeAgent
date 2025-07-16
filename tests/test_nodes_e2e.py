@@ -1,20 +1,32 @@
-from pydantic import TypeAdapter
-from agentNodes.clarifier import Clarifier
-from agentNodes.researcher import Researcher
-from modelAccessors.base_accessor import BaseModelAccessor
+import pathlib
+import sys
+import types
 
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+dummy_mod = types.ModuleType("modelAccessors.openai_accessor")
+dummy_mod.OpenAIAccessor = object
+sys.modules.setdefault("modelAccessors.openai_accessor", dummy_mod)
+dummy_mod2 = types.ModuleType("modelAccessors.anthropic_accessor")
+dummy_mod2.AnthropicAccessor = object
+sys.modules.setdefault("modelAccessors.anthropic_accessor", dummy_mod2)
+dummy_mod3 = types.ModuleType("modelAccessors.mock_accessor")
+dummy_mod3.MockAccessor = object
+sys.modules.setdefault("modelAccessors.mock_accessor", dummy_mod3)
+from agent_orchestrator import NODE_FACTORY, AgentOrchestrator
+from agentNodes.researcher import Researcher
 from agentNodes.hld_designer import HLDDesigner
 from agentNodes.implementer import Implementer
 from agentNodes.reviewer import Reviewer
 from agentNodes.tester import Tester
 from agentNodes.deployer import Deployer
+from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.task import Task, TaskType
 from dataModel.model_response import (
-    ModelResponse,
     DecomposedResponse,
     ImplementedResponse,
-    FollowUpResponse,
 )
+import json
 
 
 class _StubAccessor(BaseModelAccessor):
@@ -35,106 +47,71 @@ class _StubAccessor(BaseModelAccessor):
             raise NotImplementedError()
         return self._exec_with_tools_callback(model, system_prompt, user_prompt, tools)
 
+
 def _hld_call_model(prompt: str, schema):
-    if "Complexity: 2" in prompt:
-        subtasks = [
-            Task(id="d1-1", description="sub", type=TaskType.HLD),
-            Task(id="d1-2", description="sub", type=TaskType.HLD),
-        ]
-        return DecomposedResponse(subtasks=subtasks)
-    return ImplementedResponse(content="outline")
-
-
-def _clarify_call_model(prompt: str, schema):
-    if "?" in prompt:
-        return FollowUpResponse(
-            follow_up_ask=Task(id="root-fu", description="Need more info", type=TaskType.REQUIREMENTS)
-        )
-    return ImplementedResponse(content="Requirements are clear")
+    subtasks = [
+        Task(id="r1", description="research", type=TaskType.RESEARCH),
+        Task(id="i1", description="impl", type=TaskType.IMPLEMENT),
+        Task(id="v1", description="review", type=TaskType.REVIEW),
+        Task(id="t1", description="test", type=TaskType.TEST),
+        Task(id="d1", description="deploy", type=TaskType.DEPLOY),
+    ]
+    return DecomposedResponse(subtasks=subtasks)
 
 
 def _research_exec(model: str, system_prompt: str, user_prompt: str, tools=None):
     return ImplementedResponse(artifacts=["https://example.com"])
 
-NODE_REGISTRY = {
-    "clarify": Clarifier(_StubAccessor(_clarify_call_model)),
-    "research": Researcher(_StubAccessor(exec_with_tools_callback=_research_exec)),
-    "hld": HLDDesigner(_StubAccessor(_hld_call_model)),
-    "implement": Implementer(),
-    "review": Reviewer(),
-    "test": Tester(),
-    "deploy": Deployer(),
+
+RULES = {
+    "HLD": {"can_spawn": {"RESEARCH": 1, "IMPLEMENT": 1, "REVIEW": 1, "TEST": 1, "DEPLOY": 1}, "self_spawn": False},
+    "RESEARCH": {"can_spawn": {}, "self_spawn": False},
+    "IMPLEMENT": {"can_spawn": {}, "self_spawn": False},
+    "REVIEW": {"can_spawn": {}, "self_spawn": False},
+    "TEST": {"can_spawn": {}, "self_spawn": False},
+    "DEPLOY": {"can_spawn": {}, "self_spawn": False},
 }
 
-def route(task: Task, state: dict) -> dict:
-    if "?" in task.description:
-        return NODE_REGISTRY["clarify"](state, {})
-    if task.type == TaskType.RESEARCH:
-        return NODE_REGISTRY["research"](state, {})
-    if task.type == TaskType.IMPLEMENT:
-        return NODE_REGISTRY["implement"](state, {})
-    if task.type == TaskType.REVIEW:
-        return NODE_REGISTRY["review"](state, {})
-    if task.type == TaskType.TEST:
-        return NODE_REGISTRY["test"](state, {})
-    if task.type == TaskType.DEPLOY:
-        return NODE_REGISTRY["deploy"](state, {})
-    return NODE_REGISTRY["hld"](state, {})
 
+def test_end_to_end_chain(monkeypatch, tmp_path):
+    path = tmp_path / "rules.json"
+    path.write_text(json.dumps(RULES))
 
-def test_end_to_end_chain():
-    root = Task(id="root", description="Build a web app?", type=TaskType.REQUIREMENTS)
-    state = {"root_task": root, "task_queue": [root]}
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.HLD,
+        lambda acc: HLDDesigner(_StubAccessor(_hld_call_model)),
+    )
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.RESEARCH,
+        lambda acc: Researcher(_StubAccessor(exec_with_tools_callback=_research_exec)),
+    )
+    monkeypatch.setitem(NODE_FACTORY, TaskType.IMPLEMENT, lambda acc: Implementer())
 
-    # Clarifier step
-    clarifier_res = route(root, state)
-    adapter = TypeAdapter(ModelResponse)
-    clarifier_parsed = adapter.validate_python(clarifier_res)
-    assert clarifier_parsed.response_type == "follow_up_required"
+    def _review_node(state, config=None):
+        return ImplementedResponse(content="reviewed").model_dump()
 
-    # user provides details -> research task
-    research_task = Task(id="r1", description="Gather stack", type=TaskType.RESEARCH)
-    state["task_queue"] = [research_task]
-    research_res = route(research_task, state)
-    research_parsed = adapter.validate_python(research_res)
-    assert research_parsed.response_type == "implemented"
+    def _deploy_node(state, config=None):
+        return ImplementedResponse(content="deployed", artifacts=["foo.py"]).model_dump()
 
-    # design phase
-    design_task = Task(id="d1", description="Design", type=TaskType.HLD, complexity=2)
-    state["task_queue"] = [design_task]
-    design_res = route(design_task, state)
-    design_parsed = adapter.validate_python(design_res)
-    assert isinstance(design_parsed, DecomposedResponse)
-    assert len(design_parsed.subtasks) == 2
+    monkeypatch.setitem(NODE_FACTORY, TaskType.REVIEW, lambda acc: _review_node)
+    monkeypatch.setitem(NODE_FACTORY, TaskType.TEST, lambda acc: Tester())
+    monkeypatch.setitem(NODE_FACTORY, TaskType.DEPLOY, lambda acc: _deploy_node)
 
-    # implementation phase
-    implement_task = Task(id="i1", description="Implement", type=TaskType.IMPLEMENT)
-    state["task_queue"] = [implement_task]
-    implement_res = route(implement_task, state)
-    implement_parsed = adapter.validate_python(implement_res)
-    assert implement_parsed.response_type == "implemented"
-    state["last_response"] = implement_parsed
+    monkeypatch.setattr(AgentOrchestrator, "_get_accessor", lambda self, t: _StubAccessor())
 
-    # review phase
-    review_task = Task(id="v1", description="Review", type=TaskType.REVIEW)
-    state["task_queue"] = [review_task]
-    review_res = route(review_task, state)
-    review_parsed = adapter.validate_python(review_res)
-    assert review_parsed.response_type == "implemented"
-    state["last_response"] = review_parsed
+    orch = AgentOrchestrator(config_path=str(path))
+    project = orch.implement_project("build")
 
-    # test phase
-    test_task = Task(id="t1", description="Test", type=TaskType.TEST)
-    state["task_queue"] = [test_task]
-    test_res = route(test_task, state)
-    test_parsed = adapter.validate_python(test_res)
-    assert test_parsed.response_type == "implemented"
-
-    # deploy phase
-    deploy_task = Task(id="dpl1", description="Deploy", type=TaskType.DEPLOY)
-    state["task_queue"] = [deploy_task]
-    deploy_res = route(deploy_task, state)
-    deploy_parsed = adapter.validate_python(deploy_res)
-    assert deploy_parsed.response_type == "implemented"
-    assert deploy_parsed.content == "deployed"
-    assert deploy_parsed.artifacts == ["foo.py"]
+    completed = [t.type for t in project.completedTasks]
+    assert completed == [
+        TaskType.HLD,
+        TaskType.RESEARCH,
+        TaskType.IMPLEMENT,
+        TaskType.REVIEW,
+        TaskType.TEST,
+        TaskType.DEPLOY,
+    ]
+    assert not project.failedTasks
+    assert not project.queuedTasks

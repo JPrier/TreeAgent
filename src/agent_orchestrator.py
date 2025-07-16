@@ -1,10 +1,33 @@
-from pydantic import BaseModel
-from .dataModel.task import Task, TaskType
-from .dataModel.model import AccessorType, Model
-from .modelAccessors.base_accessor import BaseModelAccessor
-from .modelAccessors.openai_accessor import OpenAIAccessor
-from .modelAccessors.anthropic_accessor import AnthropicAccessor
-from .modelAccessors.mock_accessor import MockAccessor
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from typing import Callable, Any
+
+from pydantic import BaseModel, TypeAdapter
+
+from dataModel.task import Task, TaskType, TaskStatus
+from dataModel.model import AccessorType, Model
+from dataModel.model_response import (
+    ModelResponse,
+    ModelResponseType,
+    DecomposedResponse,
+    ImplementedResponse,
+    FollowUpResponse,
+    FailedResponse,
+)
+from modelAccessors.base_accessor import BaseModelAccessor
+from modelAccessors.openai_accessor import OpenAIAccessor
+from modelAccessors.anthropic_accessor import AnthropicAccessor
+from modelAccessors.mock_accessor import MockAccessor
+from agentNodes.clarifier import Clarifier
+from agentNodes.hld_designer import HLDDesigner
+from agentNodes.lld_designer import LLDDesigner
+from agentNodes.researcher import Researcher
+from agentNodes.implementer import Implementer
+from agentNodes.reviewer import Reviewer
+from agentNodes.tester import Tester
+from agentNodes.deployer import Deployer
 
 class Project(BaseModel):
     failedTasks:     list[Task]
@@ -12,10 +35,31 @@ class Project(BaseModel):
     inProgressTasks: list[Task]
     queuedTasks:     list[Task]
 
+NODE_FACTORY: dict[TaskType, Callable[[BaseModelAccessor], Any]] = {
+    TaskType.REQUIREMENTS: lambda acc: Clarifier(acc),
+    TaskType.RESEARCH: lambda acc: Researcher(acc),
+    TaskType.HLD: lambda acc: HLDDesigner(acc),
+    TaskType.LLD: lambda acc: LLDDesigner(acc),
+    TaskType.IMPLEMENT: lambda acc: Implementer(),
+    TaskType.REVIEW: lambda acc: Reviewer(),
+    TaskType.TEST: lambda acc: Tester(),
+    TaskType.DEPLOY: lambda acc: Deployer(),
+}
+
+
 class AgentOrchestrator:
-    def __init__(self):
-        # Initialize the orchestrator - no setup needed currently
-        pass
+    def __init__(self, config_path: str | None = None):
+        """Load spawn rules and prepare orchestrator."""
+        cfg_path = (
+            Path(config_path)
+            if config_path
+            else Path(__file__).resolve().parents[1] / "spawn_rules.json"
+        )
+        if cfg_path.exists():
+            with open(cfg_path, "r") as fh:
+                self.spawn_rules: dict[str, dict[str, Any]] = json.load(fh)
+        else:
+            self.spawn_rules = {}
     
     def _get_accessor(self, accessor_type: AccessorType) -> BaseModelAccessor:
         """Get the appropriate accessor for the given accessor type."""
@@ -37,15 +81,79 @@ class AgentOrchestrator:
         :param project_prompt: The initial prompt describing the project.
         :return: Summary of the implemented project.
         """
-        # Create the root task and mark it completed.
         root_task: Task = self.create_root_task(project_prompt)
 
         project = Project(
             failedTasks=[],
-            completedTasks=[root_task],
+            completedTasks=[],
             inProgressTasks=[],
-            queuedTasks=[],
+            queuedTasks=[root_task],
         )
+
+        adapter = TypeAdapter(ModelResponse)
+
+        while project.queuedTasks:
+            current_task = project.queuedTasks.pop(0)
+            current_task.status = TaskStatus.IN_PROGRESS
+            project.inProgressTasks.append(current_task)
+
+            accessor = self._get_accessor(current_task.model.accessor_type)
+            factory = NODE_FACTORY.get(current_task.type)
+            if not factory:
+                current_task.status = TaskStatus.FAILED
+                current_task.result = f"No node for {current_task.type}"
+                project.inProgressTasks.remove(current_task)
+                project.failedTasks.append(current_task)
+                continue
+
+            node = factory(accessor)
+
+            try:
+                response_dict = node({"task_queue": [current_task], "root_task": root_task})
+                response = adapter.validate_python(response_dict)
+            except Exception as exc:  # noqa: BLE001
+                current_task.status = TaskStatus.FAILED
+                current_task.result = str(exc)
+                project.inProgressTasks.remove(current_task)
+                project.failedTasks.append(current_task)
+                continue
+
+            if response.response_type == ModelResponseType.DECOMPOSED:
+                assert isinstance(response, DecomposedResponse)
+                allowed = self.spawn_rules.get(current_task.type.name, {}).get("can_spawn", {})
+                spawned_count: dict[str, int] = {}
+                for sub in response.subtasks:
+                    limit = allowed.get(sub.type.name)
+                    if limit is None:
+                        continue
+                    spawned_count[sub.type.name] = spawned_count.get(sub.type.name, 0) + 1
+                    if spawned_count[sub.type.name] > limit:
+                        continue
+                    sub.parent_id = current_task.id
+                    sub.status = TaskStatus.PENDING
+                    project.queuedTasks.append(sub)
+                current_task.status = TaskStatus.COMPLETED
+                current_task.result = response.content
+                project.inProgressTasks.remove(current_task)
+                project.completedTasks.append(current_task)
+            elif response.response_type == ModelResponseType.IMPLEMENTED:
+                assert isinstance(response, ImplementedResponse)
+                current_task.status = TaskStatus.COMPLETED
+                current_task.result = response.content
+                project.inProgressTasks.remove(current_task)
+                project.completedTasks.append(current_task)
+            elif response.response_type == ModelResponseType.FOLLOW_UP_REQUIRED:
+                assert isinstance(response, FollowUpResponse)
+                current_task.status = TaskStatus.BLOCKED
+                current_task.result = response.content
+                project.inProgressTasks.remove(current_task)
+                project.failedTasks.append(current_task)
+            elif response.response_type == ModelResponseType.FAILED:
+                assert isinstance(response, FailedResponse)
+                current_task.status = TaskStatus.FAILED
+                current_task.result = response.error_message
+                project.inProgressTasks.remove(current_task)
+                project.failedTasks.append(current_task)
 
         return project
     
