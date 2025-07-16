@@ -62,11 +62,12 @@ class AgentOrchestrator:
             self.spawn_rules = {}
 
     def _enqueue_subtasks(
-        self, parent: Task, subtasks: list[Task], project: Project
-    ) -> None:
-        """Add subtasks to the queue obeying spawn rules."""
+        self, parent: Task, subtasks: list[Task]
+    ) -> list[Task]:
+        """Filter subtasks based on spawn rules and return the allowed ones."""
         allowed = self.spawn_rules.get(parent.type.name, {}).get("can_spawn", {})
         spawned_count: dict[str, int] = {}
+        out: list[Task] = []
         for sub in subtasks:
             limit = allowed.get(sub.type.name)
             if limit is None:
@@ -76,7 +77,8 @@ class AgentOrchestrator:
                 continue
             sub.parent_id = parent.id
             sub.status = TaskStatus.PENDING
-            project.queuedTasks.append(sub)
+            out.append(sub)
+        return out
     
     def _get_accessor(self, accessor_type: AccessorType) -> BaseModelAccessor:
         """Get the appropriate accessor for the given accessor type."""
@@ -138,7 +140,8 @@ class AgentOrchestrator:
             match response.response_type:
                 case ModelResponseType.DECOMPOSED:
                     assert isinstance(response, DecomposedResponse)
-                    self._enqueue_subtasks(current_task, response.subtasks, project)
+                    new_tasks = self._enqueue_subtasks(current_task, response.subtasks)
+                    project.queuedTasks.extend(new_tasks)
                     current_task.status = TaskStatus.COMPLETED
                     current_task.result = response.content
                     project.inProgressTasks.remove(current_task)
