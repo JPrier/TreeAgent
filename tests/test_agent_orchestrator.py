@@ -1,6 +1,6 @@
 import json
 
-import pytest
+# ruff: noqa: E402
 
 import importlib
 import pathlib

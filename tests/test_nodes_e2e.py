@@ -2,6 +2,8 @@ import pathlib
 import sys
 import types
 
+# ruff: noqa: E402
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 dummy_mod = types.ModuleType("modelAccessors.openai_accessor")
@@ -17,9 +19,7 @@ from agent_orchestrator import NODE_FACTORY, AgentOrchestrator
 from agentNodes.researcher import Researcher
 from agentNodes.hld_designer import HLDDesigner
 from agentNodes.implementer import Implementer
-from agentNodes.reviewer import Reviewer
 from agentNodes.tester import Tester
-from agentNodes.deployer import Deployer
 from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.task import Task, TaskType
 from dataModel.model_response import (
@@ -27,6 +27,7 @@ from dataModel.model_response import (
     ImplementedResponse,
 )
 import json
+
 
 
 class _StubAccessor(BaseModelAccessor):

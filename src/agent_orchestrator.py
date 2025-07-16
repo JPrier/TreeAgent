@@ -60,6 +60,23 @@ class AgentOrchestrator:
                 self.spawn_rules: dict[str, dict[str, Any]] = json.load(fh)
         else:
             self.spawn_rules = {}
+
+    def _enqueue_subtasks(
+        self, parent: Task, subtasks: list[Task], project: Project
+    ) -> None:
+        """Add subtasks to the queue obeying spawn rules."""
+        allowed = self.spawn_rules.get(parent.type.name, {}).get("can_spawn", {})
+        spawned_count: dict[str, int] = {}
+        for sub in subtasks:
+            limit = allowed.get(sub.type.name)
+            if limit is None:
+                continue
+            spawned_count[sub.type.name] = spawned_count.get(sub.type.name, 0) + 1
+            if spawned_count[sub.type.name] > limit:
+                continue
+            sub.parent_id = parent.id
+            sub.status = TaskStatus.PENDING
+            project.queuedTasks.append(sub)
     
     def _get_accessor(self, accessor_type: AccessorType) -> BaseModelAccessor:
         """Get the appropriate accessor for the given accessor type."""
@@ -118,42 +135,32 @@ class AgentOrchestrator:
                 project.failedTasks.append(current_task)
                 continue
 
-            if response.response_type == ModelResponseType.DECOMPOSED:
-                assert isinstance(response, DecomposedResponse)
-                allowed = self.spawn_rules.get(current_task.type.name, {}).get("can_spawn", {})
-                spawned_count: dict[str, int] = {}
-                for sub in response.subtasks:
-                    limit = allowed.get(sub.type.name)
-                    if limit is None:
-                        continue
-                    spawned_count[sub.type.name] = spawned_count.get(sub.type.name, 0) + 1
-                    if spawned_count[sub.type.name] > limit:
-                        continue
-                    sub.parent_id = current_task.id
-                    sub.status = TaskStatus.PENDING
-                    project.queuedTasks.append(sub)
-                current_task.status = TaskStatus.COMPLETED
-                current_task.result = response.content
-                project.inProgressTasks.remove(current_task)
-                project.completedTasks.append(current_task)
-            elif response.response_type == ModelResponseType.IMPLEMENTED:
-                assert isinstance(response, ImplementedResponse)
-                current_task.status = TaskStatus.COMPLETED
-                current_task.result = response.content
-                project.inProgressTasks.remove(current_task)
-                project.completedTasks.append(current_task)
-            elif response.response_type == ModelResponseType.FOLLOW_UP_REQUIRED:
-                assert isinstance(response, FollowUpResponse)
-                current_task.status = TaskStatus.BLOCKED
-                current_task.result = response.content
-                project.inProgressTasks.remove(current_task)
-                project.failedTasks.append(current_task)
-            elif response.response_type == ModelResponseType.FAILED:
-                assert isinstance(response, FailedResponse)
-                current_task.status = TaskStatus.FAILED
-                current_task.result = response.error_message
-                project.inProgressTasks.remove(current_task)
-                project.failedTasks.append(current_task)
+            match response.response_type:
+                case ModelResponseType.DECOMPOSED:
+                    assert isinstance(response, DecomposedResponse)
+                    self._enqueue_subtasks(current_task, response.subtasks, project)
+                    current_task.status = TaskStatus.COMPLETED
+                    current_task.result = response.content
+                    project.inProgressTasks.remove(current_task)
+                    project.completedTasks.append(current_task)
+                case ModelResponseType.IMPLEMENTED:
+                    assert isinstance(response, ImplementedResponse)
+                    current_task.status = TaskStatus.COMPLETED
+                    current_task.result = response.content
+                    project.inProgressTasks.remove(current_task)
+                    project.completedTasks.append(current_task)
+                case ModelResponseType.FOLLOW_UP_REQUIRED:
+                    assert isinstance(response, FollowUpResponse)
+                    current_task.status = TaskStatus.BLOCKED
+                    current_task.result = response.content
+                    project.inProgressTasks.remove(current_task)
+                    project.failedTasks.append(current_task)
+                case ModelResponseType.FAILED:
+                    assert isinstance(response, FailedResponse)
+                    current_task.status = TaskStatus.FAILED
+                    current_task.result = response.error_message
+                    project.inProgressTasks.remove(current_task)
+                    project.failedTasks.append(current_task)
 
         return project
     
