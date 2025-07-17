@@ -15,13 +15,15 @@ def test_orchestrator_runs_all_tasks(monkeypatch, tmp_path):
     path.write_text(json.dumps(rules))
 
     def hld_factory(_acc):
-        def node(state, config=None):
+        def node(task, config=None):
+            assert isinstance(task, Task)
             sub = Task(id="impl", description="impl", type=TaskType.IMPLEMENT)
             return DecomposedResponse(subtasks=[sub]).model_dump()
         return node
 
     def impl_factory():
-        def node(state, config=None):
+        def node(task, config=None):
+            assert isinstance(task, Task)
             return ImplementedResponse(content="done").model_dump()
         return node
 
@@ -67,14 +69,16 @@ def test_spawn_rule_limit(monkeypatch, tmp_path):
     path.write_text(json.dumps(rules))
 
     def hld_factory(_acc):
-        def node(state, config=None):
+        def node(task, config=None):
+            assert isinstance(task, Task)
             sub1 = Task(id="impl1", description="impl", type=TaskType.IMPLEMENT)
             sub2 = Task(id="impl2", description="impl", type=TaskType.IMPLEMENT)
             return DecomposedResponse(subtasks=[sub1, sub2]).model_dump()
         return node
 
     def impl_factory():
-        def node(state, config=None):
+        def node(task, config=None):
+            assert isinstance(task, Task)
             return ImplementedResponse(content="done").model_dump()
         return node
 
@@ -109,14 +113,16 @@ def test_resume_from_checkpoint(monkeypatch, tmp_path):
     checkpoint_base = tmp_path
 
     def hld_factory(_acc):
-        def node(state, config=None):
+        def node(task, config=None):
+            assert isinstance(task, Task)
             sub1 = Task(id="impl1", description="i1", type=TaskType.IMPLEMENT)
             sub2 = Task(id="impl2", description="i2", type=TaskType.IMPLEMENT)
             return DecomposedResponse(subtasks=[sub1, sub2]).model_dump()
         return node
 
     def impl_factory():
-        def node(state, config=None):
+        def node(task, config=None):
+            assert isinstance(task, Task)
             return ImplementedResponse(content="done").model_dump()
         return node
 

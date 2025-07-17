@@ -13,7 +13,12 @@ from dataModel.model_response import (
 class Clarifier:
     """Decides whether the root task needs clarifying questions."""
 
-    PROMPT_TEMPLATE = "Clarify the following task if needed: {task}"
+    PROMPT_TEMPLATE = (
+        "You are checking if a project description needs any follow-up"
+        " questions. If it is clear enough to begin work, respond with the"
+        " phrase 'No clarification required'. Otherwise provide one concise"
+        " question to ask.\nTask: {task}"
+    )
 
     SCHEMA = FollowUpResponse | ImplementedResponse
 
@@ -27,6 +32,5 @@ class Clarifier:
         )
         return result
 
-    def __call__(self, state: dict[str, Any], config: dict[str, Any] | None = None) -> dict:
-        root_task: Task = state["root_task"]
-        return self.execute_task(root_task).model_dump()
+    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
+        return self.execute_task(task).model_dump()

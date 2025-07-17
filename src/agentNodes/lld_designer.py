@@ -28,6 +28,5 @@ class LLDDesigner:
         response: ModelResponse = self.llm_accessor.call_model(prompt, LLDDesigner.SCHEMA)
         return response
 
-    def __call__(self, state: dict[str, Any], config: dict[str, Any] | None = None) -> dict:
-        current_task: Task = state["task_queue"][0]
-        return self.execute_task(current_task).model_dump()
+    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
+        return self.execute_task(task).model_dump()
