@@ -1,6 +1,7 @@
 """Export public data models for the TreeAgent package."""
 
 from .task import TaskType, Task, TaskStatus
+from .project import Project
 from .model_response import (
     ModelResponse,
     ModelResponseType,
@@ -20,5 +21,6 @@ __all__ = [
     "FollowUpResponse",
     "FailedResponse",
     "TaskStatus",
+    "Project",
 ]
 

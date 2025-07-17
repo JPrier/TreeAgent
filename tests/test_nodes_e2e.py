@@ -78,7 +78,7 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     monkeypatch.setattr(AgentOrchestrator, "_get_accessor", lambda self, t: MockAccessor())
 
     orch = AgentOrchestrator(config_path=str(path))
-    project = orch.implement_project("build")
+    project = orch.implement_project("build", checkpoint_dir=str(tmp_path))
 
     completed = [t.type for t in project.completedTasks]
     assert completed == [
