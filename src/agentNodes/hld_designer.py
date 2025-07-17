@@ -16,7 +16,8 @@ class HLDDesigner:
     PROMPT_TEMPLATE = (
         "Create a high level design based on the following requirements:\n"
         "{requirements}\n"
-        "Complexity: {complexity}"
+        "Complexity: {complexity}\n"
+        "Provide at most 5 subtasks using only the types: LLD, RESEARCH, TEST."
     )
 
     SCHEMA = DecomposedResponse | ImplementedResponse

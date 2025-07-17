@@ -65,6 +65,9 @@ class AgentOrchestrator:
     def _search_rules_file() -> Path | None:
         """Search parent directories for ``spawn_rules.json``."""
         for parent in Path(__file__).resolve().parents:
+            candidate = parent / "config" / "spawn_rules.json"
+            if candidate.exists():
+                return candidate
             candidate = parent / "spawn_rules.json"
             if candidate.exists():
                 return candidate
@@ -74,10 +77,14 @@ class AgentOrchestrator:
         self, parent: Task, subtasks: list[Task]
     ) -> list[Task]:
         """Filter subtasks based on spawn rules and return the allowed ones."""
-        allowed = self.spawn_rules.get(parent.type.name, {}).get("can_spawn", {})
+        rules = self.spawn_rules.get(parent.type.name, {})
+        allowed = rules.get("can_spawn", {})
+        allow_self = rules.get("self_spawn", True)
         spawned_count: dict[str, int] = {}
         out: list[Task] = []
         for sub in subtasks:
+            if not allow_self and sub.type == parent.type:
+                continue
             limit = allowed.get(sub.type.name)
             if limit is None:
                 continue
