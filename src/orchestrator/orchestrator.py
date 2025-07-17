@@ -3,8 +3,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 from typing import Callable, Any
+from datetime import datetime
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import TypeAdapter
 
 from dataModel.task import Task, TaskType, TaskStatus
 from dataModel.model import AccessorType, Model
@@ -15,6 +16,12 @@ from dataModel.model_response import (
     ImplementedResponse,
     FollowUpResponse,
     FailedResponse,
+)
+from dataModel.project import Project
+from dataManagement.project_manager import (
+    save_project_state,
+    load_project_state,
+    latest_snapshot_path,
 )
 from modelAccessors.base_accessor import BaseModelAccessor
 from modelAccessors.openai_accessor import OpenAIAccessor
@@ -29,11 +36,6 @@ from agentNodes.reviewer import Reviewer
 from agentNodes.tester import Tester
 from agentNodes.deployer import Deployer
 
-class Project(BaseModel):
-    failedTasks:     list[Task]
-    completedTasks:  list[Task]
-    inProgressTasks: list[Task]
-    queuedTasks:     list[Task]
 
 NODE_FACTORY: dict[TaskType, Callable[[BaseModelAccessor], Any]] = {
     TaskType.REQUIREMENTS: lambda acc: Clarifier(acc),
@@ -108,7 +110,7 @@ class AgentOrchestrator:
             case _:
                 raise ValueError(f"Unknown accessor type: {accessor_type}")
 
-    def implement_project(self, project_prompt: str) -> Project:
+    def implement_project(self, project_prompt: str, checkpoint_dir: str = "checkpoints") -> Project:
         """
         Orchestrates the implementation of a project by decomposing it into tasks,
         assigning them to agents, and collecting their responses.
@@ -117,14 +119,26 @@ class AgentOrchestrator:
         :return: Summary of the implemented project.
         """
         root_task: Task = self.create_root_task(project_prompt)
-
         project = Project(
+            rootTask=root_task,
             failedTasks=[],
             completedTasks=[],
             inProgressTasks=[],
             queuedTasks=[root_task],
         )
 
+        base = Path(checkpoint_dir)
+        run_dir = base / datetime.utcnow().strftime("%Y%m%d%H%M%S")
+
+        return self._run_loop(project, run_dir)
+
+    def resume_project(self, checkpoint_dir: str) -> Project:
+        """Resume an existing project from ``checkpoint_dir``."""
+        snapshot = latest_snapshot_path(checkpoint_dir)
+        project = load_project_state(snapshot)
+        return self._run_loop(project, Path(checkpoint_dir))
+
+    def _run_loop(self, project: Project, checkpoint_dir: Path) -> Project:
         adapter = TypeAdapter(ModelResponse)
 
         while project.queuedTasks:
@@ -144,7 +158,7 @@ class AgentOrchestrator:
             node = factory(accessor)
 
             try:
-                response_dict = node({"task_queue": [current_task], "root_task": root_task})
+                response_dict = node({"task_queue": [current_task], "root_task": project.rootTask})
                 response = adapter.validate_python(response_dict)
             except Exception as exc:  # noqa: BLE001
                 current_task.status = TaskStatus.FAILED
@@ -180,6 +194,10 @@ class AgentOrchestrator:
                     current_task.result = response.error_message
                     project.inProgressTasks.remove(current_task)
                     project.failedTasks.append(current_task)
+
+            save_project_state(project, checkpoint_dir)
+
+        save_project_state(project, checkpoint_dir)
 
         return project
     
