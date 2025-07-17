@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from .agent_orchestrator import AgentOrchestrator
+from .orchestrator import AgentOrchestrator
 
 
 def parse_args() -> argparse.Namespace:
