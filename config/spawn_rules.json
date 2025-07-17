@@ -1,5 +1,5 @@
 {
-  "HLD": { "can_spawn": { "IMPLEMENT": 5, "RESEARCH": 5, "TEST": 1 }, "self_spawn": false },
+  "HLD": { "can_spawn": { "LLD": 5, "RESEARCH": 5, "TEST": 1 }, "self_spawn": false },
   "LLD": { "can_spawn": { "IMPLEMENT": 5, "RESEARCH": 3, "TEST": 1 }, "self_spawn": false },
   "IMPLEMENT": { "can_spawn": { "RESEARCH": 1, "TEST": 1 }, "self_spawn": false },
   "REVIEW": { "can_spawn": { "IMPLEMENT": 1 }, "self_spawn": false },
