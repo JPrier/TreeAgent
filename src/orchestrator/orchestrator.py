@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Callable, Any
 from datetime import datetime
 
-from pydantic import BaseModel, TypeAdapter
+from pydantic import TypeAdapter
 
 from dataModel.task import Task, TaskType, TaskStatus
 from dataModel.model import AccessorType, Model

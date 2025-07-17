@@ -1,5 +1,4 @@
 import time
-import pytest
 
 from dataModel import Task, TaskType
 from dataModel.project import Project
@@ -71,7 +70,7 @@ def test_empty_project(tmp_path):
 
 def test_latest_snapshot_path(tmp_path):
     project = build_project()
-    snap1 = save_project_state(project, tmp_path)
+    save_project_state(project, tmp_path)
     time.sleep(0.01)
     project.completedTasks.append(project.rootTask)
     snap2 = save_project_state(project, tmp_path)
