@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 from pydantic import TypeAdapter
 import google.generativeai as genai
 from .base_accessor import BaseModelAccessor, Tool
-from ..dataModel.model_response import ModelResponse
+from dataModel.model_response import ModelResponse
 
 class GeminiAccessor(BaseModelAccessor):
     def __init__(self):

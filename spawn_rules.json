@@ -1,0 +1,10 @@
+{
+  "HLD": { "can_spawn": { "IMPLEMENT": 5, "RESEARCH": 5, "TEST": 1 }, "self_spawn": false },
+  "LLD": { "can_spawn": { "IMPLEMENT": 5, "RESEARCH": 3, "TEST": 1 }, "self_spawn": false },
+  "IMPLEMENT": { "can_spawn": { "RESEARCH": 1, "TEST": 1 }, "self_spawn": false },
+  "REVIEW": { "can_spawn": { "IMPLEMENT": 1 }, "self_spawn": false },
+  "RESEARCH": { "can_spawn": {}, "self_spawn": false },
+  "TEST": { "can_spawn": {}, "self_spawn": false },
+  "DEPLOY": { "can_spawn": {}, "self_spawn": false },
+  "REQUIREMENTS": { "can_spawn": { "HLD": 1 }, "self_spawn": false }
+}

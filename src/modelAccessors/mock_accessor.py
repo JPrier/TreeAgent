@@ -1,11 +1,11 @@
 from .base_accessor import BaseModelAccessor, Tool
 from typing import Optional
-from ..dataModel.model_response import (
+from dataModel.model_response import (
     ModelResponse,
     DecomposedResponse,
     ImplementedResponse,
 )
-from ..dataModel.task import Task, TaskType
+from dataModel.task import Task, TaskType
 
 class MockAccessor(BaseModelAccessor):
     """Mock accessor for testing without API calls"""
@@ -13,6 +13,10 @@ class MockAccessor(BaseModelAccessor):
     def __init__(self):
         # Mock models that "support" tools
         self.tool_supported_models = ["mock-gpt-4", "mock-claude"]
+
+    def call_model(self, prompt: str, schema) -> ModelResponse:  # pragma: no cover - simple wrapper
+        """Simpler call method used by node tests."""
+        return self.prompt_model("mock-gpt-4", "", prompt)
     
     def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:
         # Return a mock decomposition for DECOMPOSE tasks

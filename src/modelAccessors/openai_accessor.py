@@ -3,7 +3,7 @@ from typing import Optional
 from openai import OpenAI
 from pydantic import TypeAdapter
 from .base_accessor import BaseModelAccessor, Tool
-from ..dataModel.model_response import ModelResponse
+from dataModel.model_response import ModelResponse
 
 class OpenAIAccessor(BaseModelAccessor):
     def __init__(self):

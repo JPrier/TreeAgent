@@ -48,7 +48,7 @@ python -m treeagent.demo          # stub script prints skeleton task tree
 ```bash
 TreeAgent/
 ├── src/
-│   ├── agent_orchestrator.py
+│   ├── orchestrator/
 │   ├── dataModel/          # pydantic task / response schemas
 │   └── ...
 ├── examples/               # minimal end-to-end scenarios (coming soon)
