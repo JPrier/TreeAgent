@@ -158,7 +158,7 @@ class AgentOrchestrator:
             node = factory(accessor)
 
             try:
-                response_dict = node({"task_queue": [current_task], "root_task": project.rootTask})
+                response_dict = node(current_task)
                 response = adapter.validate_python(response_dict)
             except Exception as exc:  # noqa: BLE001
                 current_task.status = TaskStatus.FAILED

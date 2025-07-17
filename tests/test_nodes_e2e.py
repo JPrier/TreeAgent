@@ -65,10 +65,14 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     )
     monkeypatch.setitem(NODE_FACTORY, TaskType.IMPLEMENT, lambda acc: Implementer())
 
-    def _review_node(state, config=None):
+    def _review_node(task, config=None):
+        assert isinstance(task, Task)
+        assert task.description == "review"
         return ImplementedResponse(content="reviewed").model_dump()
 
-    def _deploy_node(state, config=None):
+    def _deploy_node(task, config=None):
+        assert isinstance(task, Task)
+        assert task.description == "deploy"
         return ImplementedResponse(content="deployed", artifacts=["foo.py"]).model_dump()
 
     monkeypatch.setitem(NODE_FACTORY, TaskType.REVIEW, lambda acc: _review_node)
