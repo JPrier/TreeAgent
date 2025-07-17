@@ -10,13 +10,13 @@ import types
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "src"))
 dummy_mod = types.ModuleType("modelAccessors.openai_accessor")
-dummy_mod.OpenAIAccessor = object
+dummy_mod.OpenAIAccessor = object  # type: ignore[attr-defined]
 sys.modules.setdefault("modelAccessors.openai_accessor", dummy_mod)
 dummy_mod2 = types.ModuleType("modelAccessors.anthropic_accessor")
-dummy_mod2.AnthropicAccessor = object
+dummy_mod2.AnthropicAccessor = object  # type: ignore[attr-defined]
 sys.modules.setdefault("modelAccessors.anthropic_accessor", dummy_mod2)
 dummy_mod3 = types.ModuleType("modelAccessors.mock_accessor")
-dummy_mod3.MockAccessor = object
+dummy_mod3.MockAccessor = object  # type: ignore[attr-defined]
 sys.modules.setdefault("modelAccessors.mock_accessor", dummy_mod3)
 orchestrator_mod = importlib.import_module("agent_orchestrator")
 from dataModel.task import TaskType
