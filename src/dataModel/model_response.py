@@ -3,9 +3,9 @@ from __future__ import annotations
 from enum import Enum
 from typing import Annotated, Literal, Optional, Union
 
-from pydantic import BaseModel, Field
-
 from .task import Task
+
+from pydantic import BaseModel, Field
 
 
 class ModelResponseType(str, Enum):
@@ -52,3 +52,4 @@ ModelResponse = Annotated[
     Union[DecomposedResponse, ImplementedResponse, FollowUpResponse, FailedResponse],
     Field(discriminator="response_type"),
 ]
+

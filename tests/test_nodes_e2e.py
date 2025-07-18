@@ -95,3 +95,27 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     ]
     assert not project.failedTasks
     assert not project.queuedTasks
+
+    root_task = project.completedTasks[0]
+    root_resp = project.taskResults[root_task.id]
+    assert isinstance(root_resp, DecomposedResponse)
+    assert [t.type for t in root_resp.subtasks] == [
+        TaskType.RESEARCH,
+        TaskType.IMPLEMENT,
+        TaskType.REVIEW,
+        TaskType.TEST,
+        TaskType.DEPLOY,
+    ]
+    assert all(t.parent_id == root_task.id for t in root_resp.subtasks)
+
+    research_task, impl_task, review_task, test_task, deploy_task = project.completedTasks[1:]
+    assert project.taskResults[research_task.id] == ImplementedResponse(artifacts=["https://example.com"])
+    assert project.taskResults[impl_task.id] == ImplementedResponse(content="def foo(): pass", artifacts=["foo.py"])
+    assert project.taskResults[review_task.id] == ImplementedResponse(content="reviewed")
+    assert project.taskResults[test_task.id] == ImplementedResponse(content="pytest passed")
+    assert project.taskResults[deploy_task.id] == ImplementedResponse(content="deployed", artifacts=["foo.py"])
+
+    # ensure each response type occurred at least once
+    response_types = {type(resp) for resp in project.taskResults.values()}
+    assert DecomposedResponse in response_types
+    assert ImplementedResponse in response_types

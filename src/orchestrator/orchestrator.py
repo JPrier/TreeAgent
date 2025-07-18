@@ -150,9 +150,14 @@ class AgentOrchestrator:
             factory = NODE_FACTORY.get(current_task.type)
             if not factory:
                 current_task.status = TaskStatus.FAILED
-                current_task.result = f"No node for {current_task.type}"
+                failure = FailedResponse(
+                    error_message=f"No node for {current_task.type}"
+                )
                 project.inProgressTasks.remove(current_task)
                 project.failedTasks.append(current_task)
+                project.taskResults[current_task.id] = failure
+                project.latestResponse = failure
+                save_project_state(project, checkpoint_dir)
                 continue
 
             node = factory(accessor)
@@ -162,10 +167,16 @@ class AgentOrchestrator:
                 response = adapter.validate_python(response_dict)
             except Exception as exc:  # noqa: BLE001
                 current_task.status = TaskStatus.FAILED
-                current_task.result = str(exc)
+                failure = FailedResponse(error_message=str(exc))
                 project.inProgressTasks.remove(current_task)
                 project.failedTasks.append(current_task)
+                project.taskResults[current_task.id] = failure
+                project.latestResponse = failure
+                save_project_state(project, checkpoint_dir)
                 continue
+
+            project.taskResults[current_task.id] = response
+            project.latestResponse = response
 
             match response.response_type:
                 case ModelResponseType.DECOMPOSED:
@@ -173,25 +184,21 @@ class AgentOrchestrator:
                     new_tasks = self._enqueue_subtasks(current_task, response.subtasks)
                     project.queuedTasks.extend(new_tasks)
                     current_task.status = TaskStatus.COMPLETED
-                    current_task.result = response.content
                     project.inProgressTasks.remove(current_task)
                     project.completedTasks.append(current_task)
                 case ModelResponseType.IMPLEMENTED:
                     assert isinstance(response, ImplementedResponse)
                     current_task.status = TaskStatus.COMPLETED
-                    current_task.result = response.content
                     project.inProgressTasks.remove(current_task)
                     project.completedTasks.append(current_task)
                 case ModelResponseType.FOLLOW_UP_REQUIRED:
                     assert isinstance(response, FollowUpResponse)
                     current_task.status = TaskStatus.BLOCKED
-                    current_task.result = response.content
                     project.inProgressTasks.remove(current_task)
                     project.failedTasks.append(current_task)
                 case ModelResponseType.FAILED:
                     assert isinstance(response, FailedResponse)
                     current_task.status = TaskStatus.FAILED
-                    current_task.result = response.error_message
                     project.inProgressTasks.remove(current_task)
                     project.failedTasks.append(current_task)
 

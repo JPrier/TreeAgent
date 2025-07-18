@@ -52,3 +52,5 @@ class Task(BaseModel):
         if self.complexity < 1:
             raise ValueError("complexity must be >= 1")
         return self
+
+
