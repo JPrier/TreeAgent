@@ -57,6 +57,22 @@ TreeAgent/
 └── README.md
 ```
 
+### Spawn Rules Configuration
+
+Agent spawning behaviour is controlled by a JSON file named
+`spawn_rules.json`. The orchestrator looks for this file in `config/` or the
+current working directory. Each task type lists which child types it may
+create and the maximum number allowed:
+
+```json
+{
+  "HLD": { "can_spawn": { "LLD": 5, "RESEARCH": 5, "TEST": 1 }, "self_spawn": false },
+  "LLD": { "can_spawn": { "IMPLEMENT": 5, "RESEARCH": 3, "TEST": 1 }, "self_spawn": false }
+}
+```
+
+Adjust these numbers to experiment with deeper or shallower trees.
+
 ## 🧪 Running Tests
 
 Install the optional dev dependencies to enable coverage reporting:
@@ -70,6 +86,19 @@ Execute the suite with coverage enabled:
 ```bash
 pytest --cov=src
 ```
+
+### Resuming From Checkpoints
+
+Each project run writes snapshots to the directory specified by
+`--checkpoint-dir` (defaults to `checkpoints`). If the process stops you can
+continue where it left off:
+
+```bash
+python -m treeagent.cli --resume checkpoints/20240101010101
+```
+
+The orchestrator will load the latest snapshot in that directory and resume
+processing the remaining tasks.
 
 ## 🛣️ Roadmap
 1. Minimal runnable demo – wire up a root → planner → executor flow that prints a toy result.

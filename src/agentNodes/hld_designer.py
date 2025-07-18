@@ -23,9 +23,11 @@ class HLDDesigner:
     SCHEMA = DecomposedResponse | ImplementedResponse
 
     def __init__(self, llm_accessor: BaseModelAccessor):
+        """Create the designer with the given model accessor."""
         self.llm_accessor = llm_accessor
 
     def execute_task(self, task: Task) -> ModelResponse:
+        """Generate the high level design or subtasks for ``task``."""
         prompt = HLDDesigner.PROMPT_TEMPLATE.format(
             requirements=task.description,
             complexity=task.complexity,
@@ -34,4 +36,5 @@ class HLDDesigner:
         return response
 
     def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
+        """Execute and return a serialisable dict."""
         return self.execute_task(task).model_dump()

@@ -12,6 +12,7 @@ class Reviewer:
     SCHEMA = ImplementedResponse | FailedResponse
 
     def __call__(self, state: dict[str, Any], config: dict[str, Any] | None = None) -> dict:
+        """Approve implementations that contain a ``def`` statement."""
         last = state["last_response"]
         content = last.content or ""
         if "def" in content:

@@ -23,9 +23,17 @@ class Clarifier:
     SCHEMA = FollowUpResponse | ImplementedResponse
 
     def __init__(self, llm_accessor: BaseModelAccessor):
+        """Create a Clarifier.
+
+        Parameters
+        ----------
+        llm_accessor:
+            Model accessor used to query the language model.
+        """
         self.llm_accessor = llm_accessor
 
     def execute_task(self, task: Task) -> ModelResponse:
+        """Ask the LLM whether the requirements need clarification."""
         result: ModelResponse = self.llm_accessor.call_model(
             prompt=Clarifier.PROMPT_TEMPLATE.format(task=task.description),
             schema=Clarifier.SCHEMA,
@@ -33,4 +41,5 @@ class Clarifier:
         return result
 
     def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
+        """Entry point for the orchestrator."""
         return self.execute_task(task).model_dump()

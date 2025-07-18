@@ -14,9 +14,11 @@ class Researcher:
     SCHEMA = ImplementedResponse
 
     def __init__(self, llm_accessor: BaseModelAccessor):
+        """Create the researcher with the given model accessor."""
         self.llm_accessor = llm_accessor
 
     def run_llm_agent(self, task: Task) -> ModelResponse:
+        """Invoke the underlying LLM with the web search tool."""
         prompt = Researcher.PROMPT_TEMPLATE.format(query=task.description)
         return self.llm_accessor.execute_task_with_tools(
             model="researcher",
@@ -26,9 +28,11 @@ class Researcher:
         )
 
     def execute_task(self, task: Task) -> ModelResponse:
+        """Perform research for ``task`` using web search."""
         task.tools = [WEB_SEARCH_TOOL]
         result: ModelResponse = self.run_llm_agent(task)
         return result
 
     def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
+        """Execute and return a serialisable dict."""
         return self.execute_task(task).model_dump()
