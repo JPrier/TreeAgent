@@ -4,7 +4,7 @@ from agentNodes.hld_designer import HLDDesigner
 from agentNodes.implementer import Implementer
 from agentNodes.tester import Tester
 from modelAccessors.mock_accessor import MockAccessor
-from dataModel.task import Task, TaskType
+from dataModel.task import Task, TaskType, TaskStatus
 from dataModel.model_response import (
     DecomposedResponse,
     ImplementedResponse,
@@ -96,11 +96,20 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     assert not project.failedTasks
     assert not project.queuedTasks
 
-    for task in project.completedTasks:
-        assert getattr(task.result, "response_type", None) is not None
+    root_task = project.completedTasks[0]
+    assert isinstance(root_task.result, DecomposedResponse)
+    assert [t.type for t in root_task.result.subtasks] == [
+        TaskType.RESEARCH,
+        TaskType.IMPLEMENT,
+        TaskType.REVIEW,
+        TaskType.TEST,
+        TaskType.DEPLOY,
+    ]
+    assert all(t.parent_id == root_task.id for t in root_task.result.subtasks)
 
-    deploy_task = project.completedTasks[-1]
-    assert deploy_task.type == TaskType.DEPLOY
-    assert isinstance(deploy_task.result, ImplementedResponse)
-    assert deploy_task.result.content == "deployed"
-    assert deploy_task.result.artifacts == ["foo.py"]
+    research_task, impl_task, review_task, test_task, deploy_task = project.completedTasks[1:]
+    assert research_task.result == ImplementedResponse(artifacts=["https://example.com"])
+    assert impl_task.result == ImplementedResponse(content="def foo(): pass", artifacts=["foo.py"])
+    assert review_task.result == ImplementedResponse(content="reviewed")
+    assert test_task.result == ImplementedResponse(content="pytest passed")
+    assert deploy_task.result == ImplementedResponse(content="deployed", artifacts=["foo.py"])
