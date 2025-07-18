@@ -4,10 +4,7 @@ from enum import Enum
 from typing import Annotated, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from .task import Task
+from .task import Task
 
 
 class ModelResponseType(str, Enum):
@@ -54,7 +51,5 @@ ModelResponse = Annotated[
     Union[DecomposedResponse, ImplementedResponse, FollowUpResponse, FailedResponse],
     Field(discriminator="response_type"),
 ]
-
-from .task import Task
 
 Task.model_rebuild()

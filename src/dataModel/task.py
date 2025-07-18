@@ -48,8 +48,7 @@ class Task(BaseModel):
     metadata: dict = Field(default_factory=dict)
     tools: list[Tool] = Field(default_factory=list)
     model: Model = Field(default_factory=Model)
-    result: Optional[str] = None
-    response: Optional["ModelResponse"] = None
+    result: Optional["ModelResponse"] = None
 
     @model_validator(mode="after")
     def _validate_complexity(self) -> "Task":
