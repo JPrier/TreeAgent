@@ -150,11 +150,14 @@ class AgentOrchestrator:
             factory = NODE_FACTORY.get(current_task.type)
             if not factory:
                 current_task.status = TaskStatus.FAILED
-                current_task.result = FailedResponse(
+                failure = FailedResponse(
                     error_message=f"No node for {current_task.type}"
                 )
                 project.inProgressTasks.remove(current_task)
                 project.failedTasks.append(current_task)
+                project.taskResults[current_task.id] = failure
+                project.latestResponse = failure
+                save_project_state(project, checkpoint_dir)
                 continue
 
             node = factory(accessor)
@@ -162,13 +165,18 @@ class AgentOrchestrator:
             try:
                 response_dict = node(current_task)
                 response = adapter.validate_python(response_dict)
-                current_task.result = response
             except Exception as exc:  # noqa: BLE001
                 current_task.status = TaskStatus.FAILED
-                current_task.result = FailedResponse(error_message=str(exc))
+                failure = FailedResponse(error_message=str(exc))
                 project.inProgressTasks.remove(current_task)
                 project.failedTasks.append(current_task)
+                project.taskResults[current_task.id] = failure
+                project.latestResponse = failure
+                save_project_state(project, checkpoint_dir)
                 continue
+
+            project.taskResults[current_task.id] = response
+            project.latestResponse = response
 
             match response.response_type:
                 case ModelResponseType.DECOMPOSED:

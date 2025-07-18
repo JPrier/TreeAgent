@@ -3,8 +3,6 @@ from __future__ import annotations
 from enum import Enum
 from typing import Optional
 
-from .model_response import ModelResponse, DecomposedResponse, FollowUpResponse
-
 from pydantic import BaseModel, Field, model_validator
 from .model import Model
 
@@ -47,7 +45,7 @@ class Task(BaseModel):
     metadata: dict = Field(default_factory=dict)
     tools: list[Tool] = Field(default_factory=list)
     model: Model = Field(default_factory=Model)
-    result: Optional[ModelResponse] = None
+    result: Optional[str] = None
 
     @model_validator(mode="after")
     def _validate_complexity(self) -> "Task":
@@ -56,6 +54,3 @@ class Task(BaseModel):
         return self
 
 
-# resolve forward references in response models
-DecomposedResponse.model_rebuild(_types_namespace={"Task": Task})
-FollowUpResponse.model_rebuild(_types_namespace={"Task": Task})

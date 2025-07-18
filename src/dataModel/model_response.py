@@ -3,6 +3,8 @@ from __future__ import annotations
 from enum import Enum
 from typing import Annotated, Literal, Optional, Union
 
+from .task import Task
+
 from pydantic import BaseModel, Field
 
 
