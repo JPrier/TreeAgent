@@ -95,3 +95,9 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     ]
     assert not project.failedTasks
     assert not project.queuedTasks
+
+    deploy_task = project.completedTasks[-1]
+    assert deploy_task.type == TaskType.DEPLOY
+    assert isinstance(deploy_task.response, ImplementedResponse)
+    assert deploy_task.response.content == "deployed"
+    assert deploy_task.response.artifacts == ["foo.py"]

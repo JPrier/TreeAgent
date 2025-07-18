@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .model_response import ModelResponse
 
 from pydantic import BaseModel, Field, model_validator
 from .model import Model
@@ -46,6 +49,7 @@ class Task(BaseModel):
     tools: list[Tool] = Field(default_factory=list)
     model: Model = Field(default_factory=Model)
     result: Optional[str] = None
+    response: Optional["ModelResponse"] = None
 
     @model_validator(mode="after")
     def _validate_complexity(self) -> "Task":

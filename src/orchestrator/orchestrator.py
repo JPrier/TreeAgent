@@ -160,6 +160,7 @@ class AgentOrchestrator:
             try:
                 response_dict = node(current_task)
                 response = adapter.validate_python(response_dict)
+                current_task.response = response
             except Exception as exc:  # noqa: BLE001
                 current_task.status = TaskStatus.FAILED
                 current_task.result = str(exc)
