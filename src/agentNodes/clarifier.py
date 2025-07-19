@@ -9,8 +9,10 @@ from dataModel.model_response import (
     ModelResponse,
 )
 
+from .base import AgentNode
 
-class Clarifier:
+
+class Clarifier(AgentNode):
     """Decides whether the root task needs clarifying questions."""
 
     PROMPT_TEMPLATE = (
@@ -32,5 +34,3 @@ class Clarifier:
         )
         return result
 
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
-        return self.execute_task(task).model_dump()

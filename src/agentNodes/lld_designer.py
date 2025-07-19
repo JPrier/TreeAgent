@@ -4,8 +4,10 @@ from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.task import Task
 from dataModel.model_response import ModelResponse, ImplementedResponse
 
+from .base import AgentNode
 
-class LLDDesigner:
+
+class LLDDesigner(AgentNode):
     """Produces low-level design documentation."""
 
     PROMPT_TEMPLATE = (
@@ -27,6 +29,3 @@ class LLDDesigner:
         )
         response: ModelResponse = self.llm_accessor.call_model(prompt, LLDDesigner.SCHEMA)
         return response
-
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
-        return self.execute_task(task).model_dump()

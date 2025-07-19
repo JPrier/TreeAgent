@@ -1,18 +1,19 @@
 from typing import Any
 
 from dataModel.task import Task
+from dataModel.model_response import ImplementedResponse, ModelResponse
 
-from dataModel.model_response import ImplementedResponse
+from .base import AgentNode
 
 
-class Implementer:
+class Implementer(AgentNode):
     """Generates code artifacts."""
 
     SCHEMA = ImplementedResponse
 
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
+    def execute_task(self, task: Task) -> ModelResponse:
         resp = ImplementedResponse(
             content="def foo(): pass",
             artifacts=["foo.py"],
         )
-        return resp.model_dump()
+        return resp

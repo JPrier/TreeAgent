@@ -6,8 +6,10 @@ from dataModel.task import Task
 
 from tools.web_search import WEB_SEARCH_TOOL
 
+from .base import AgentNode
 
-class Researcher:
+
+class Researcher(AgentNode):
     """Gathers research artifacts using web search."""
 
     PROMPT_TEMPLATE = "{query}"
@@ -29,6 +31,3 @@ class Researcher:
         task.tools = [WEB_SEARCH_TOOL]
         result: ModelResponse = self.run_llm_agent(task)
         return result
-
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
-        return self.execute_task(task).model_dump()

@@ -9,8 +9,10 @@ from dataModel.model_response import (
     ImplementedResponse,
 )
 
+from .base import AgentNode
 
-class HLDDesigner:
+
+class HLDDesigner(AgentNode):
     """Node that requests a high-level design from an LLM."""
 
     PROMPT_TEMPLATE = (
@@ -33,5 +35,3 @@ class HLDDesigner:
         response: ModelResponse = self.llm_accessor.call_model(prompt, HLDDesigner.SCHEMA)
         return response
 
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
-        return self.execute_task(task).model_dump()
