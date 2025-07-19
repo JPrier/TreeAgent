@@ -1,15 +1,16 @@
 from typing import Any
 
-from dataModel.model_response import ImplementedResponse
+from agentNodes.base_node import AgentNode
+from dataModel.model_response import ImplementedResponse, ModelResponse
 
 
-class Deployer:
+class Deployer(AgentNode):
     """Deploys the final artifact."""
 
     SCHEMA = ImplementedResponse
 
-    def __call__(self, state: dict[str, Any], config: dict[str, Any] | None = None) -> dict:
+    def execute_task(self, state: dict[str, Any]) -> ModelResponse:
         """Return a stub deployment result."""
         last = state["last_response"]
         resp = ImplementedResponse(content="deployed", artifacts=last.artifacts)
-        return resp.model_dump()
+        return resp
