@@ -162,3 +162,80 @@ def test_resume_from_checkpoint(monkeypatch, tmp_path):
     assert completed[0] == TaskType.HLD
     assert not project.failedTasks
     assert not project.queuedTasks
+
+def test_self_spawn_blocked(monkeypatch, tmp_path):
+    rules = {
+        "HLD": {"can_spawn": {"HLD": 2}, "self_spawn": False},
+    }
+    path = tmp_path / "rules.json"
+    path.write_text(json.dumps(rules))
+
+    def hld_factory(_acc):
+        def node(task, config=None):
+            assert isinstance(task, Task)
+            sub1 = Task(id="h1", description="child1", type=TaskType.HLD)
+            sub2 = Task(id="h2", description="child2", type=TaskType.HLD)
+            return DecomposedResponse(subtasks=[sub1, sub2]).model_dump()
+        return node
+
+    monkeypatch.setattr(
+        orchestrator,
+        "NODE_FACTORY",
+        {TaskType.HLD: hld_factory},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        orchestrator.AgentOrchestrator,
+        "_get_accessor",
+        lambda self, t: MockAccessor(),
+    )
+
+    orch = orchestrator.AgentOrchestrator(config_path=str(path))
+    project = orch.implement_project("proj", checkpoint_dir=str(tmp_path))
+
+    assert [t.type for t in project.completedTasks] == [TaskType.HLD]
+    assert not project.failedTasks
+    assert not project.queuedTasks
+
+
+def test_checkpoint_written(monkeypatch, tmp_path):
+    rules = {
+        "HLD": {"can_spawn": {"IMPLEMENT": 1}, "self_spawn": False},
+        "IMPLEMENT": {"can_spawn": {}, "self_spawn": False},
+    }
+    path = tmp_path / "rules.json"
+    path.write_text(json.dumps(rules))
+
+    def hld_factory(_acc):
+        def node(task, config=None):
+            assert isinstance(task, Task)
+            sub = Task(id="i", description="impl", type=TaskType.IMPLEMENT)
+            return DecomposedResponse(subtasks=[sub]).model_dump()
+        return node
+
+    def impl_factory():
+        def node(task, config=None):
+            assert isinstance(task, Task)
+            return ImplementedResponse(content="done").model_dump()
+        return node
+
+    monkeypatch.setattr(
+        orchestrator,
+        "NODE_FACTORY",
+        {TaskType.HLD: hld_factory, TaskType.IMPLEMENT: lambda acc: impl_factory()},
+        raising=False,
+    )
+    monkeypatch.setattr(
+        orchestrator.AgentOrchestrator,
+        "_get_accessor",
+        lambda self, t: MockAccessor(),
+    )
+
+    orch = orchestrator.AgentOrchestrator(config_path=str(path))
+    project = orch.implement_project("proj", checkpoint_dir=str(tmp_path))
+
+    run_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
+    snapshots = list(run_dir.glob("*.json"))
+    assert snapshots, "no checkpoint files"
+    loaded = orchestrator.load_project_state(snapshots[-1])
+    assert loaded.completedTasks == project.completedTasks
