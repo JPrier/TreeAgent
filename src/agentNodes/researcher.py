@@ -1,5 +1,3 @@
-from typing import Any
-
 from agentNodes.base_node import AgentNode
 from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.model_response import ModelResponse, ImplementedResponse

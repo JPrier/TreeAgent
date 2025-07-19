@@ -1,5 +1,3 @@
-from typing import Any
-
 from agentNodes.base_node import AgentNode
 from dataModel.task import Task
 
