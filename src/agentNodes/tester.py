@@ -11,5 +11,6 @@ class Tester:
     SCHEMA = ImplementedResponse
 
     def __call__(self, task: Task | None = None, config: dict[str, Any] | None = None) -> dict:
+        """Return a stub test result."""
         resp = ImplementedResponse(content="pytest passed")
         return resp.model_dump()
