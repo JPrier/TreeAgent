@@ -150,9 +150,7 @@ class AgentOrchestrator:
             factory = NODE_FACTORY.get(current_task.type)
             if not factory:
                 current_task.status = TaskStatus.FAILED
-                failure = FailedResponse(
-                    error_message=f"No node for {current_task.type}"
-                )
+                failure = FailedResponse(error_message=f"No node for {current_task.type}")
                 project.inProgressTasks.remove(current_task)
                 project.failedTasks.append(current_task)
                 project.taskResults[current_task.id] = failure
@@ -188,14 +186,37 @@ class AgentOrchestrator:
                     project.completedTasks.append(current_task)
                 case ModelResponseType.IMPLEMENTED:
                     assert isinstance(response, ImplementedResponse)
+                    if current_task.type is TaskType.REQUIREMENTS:
+                        hld = Task(
+                            id=f"{current_task.id}-hld",
+                            description=current_task.description,
+                            type=TaskType.HLD,
+                        )
+                        new_tasks = self._enqueue_subtasks(current_task, [hld])
+                        project.queuedTasks.extend(new_tasks)
                     current_task.status = TaskStatus.COMPLETED
                     project.inProgressTasks.remove(current_task)
                     project.completedTasks.append(current_task)
                 case ModelResponseType.FOLLOW_UP_REQUIRED:
                     assert isinstance(response, FollowUpResponse)
-                    current_task.status = TaskStatus.BLOCKED
-                    project.inProgressTasks.remove(current_task)
-                    project.failedTasks.append(current_task)
+                    if current_task.type is TaskType.REQUIREMENTS:
+                        question = response.follow_up_ask.description
+                        answer = input(question + " ")
+                        desc = f"{current_task.description}\n{answer}".strip()
+                        hld = Task(
+                            id=f"{current_task.id}-hld",
+                            description=desc,
+                            type=TaskType.HLD,
+                        )
+                        new_tasks = self._enqueue_subtasks(current_task, [hld])
+                        project.queuedTasks.extend(new_tasks)
+                        current_task.status = TaskStatus.COMPLETED
+                        project.inProgressTasks.remove(current_task)
+                        project.completedTasks.append(current_task)
+                    else:
+                        current_task.status = TaskStatus.BLOCKED
+                        project.inProgressTasks.remove(current_task)
+                        project.failedTasks.append(current_task)
                 case ModelResponseType.FAILED:
                     assert isinstance(response, FailedResponse)
                     current_task.status = TaskStatus.FAILED
@@ -217,7 +238,7 @@ class AgentOrchestrator:
         """
         return Task(
             id="root-task",
-            type=TaskType.HLD,
+            type=TaskType.REQUIREMENTS,
             description=project_prompt,
             model=Model(),  # Use default model
         )

@@ -30,6 +30,10 @@ class OpenAIAccessor(BaseModelAccessor):
             
         return TypeAdapter(ModelResponse).validate_json(content) # type: ignore
 
+    def call_model(self, prompt: str, schema) -> ModelResponse:  # pragma: no cover - thin wrapper
+        """Convenience wrapper used by simple agent nodes."""
+        return self.prompt_model("gpt-4", "", prompt)
+
     def execute_task_with_tools(
         self,
         model: str,

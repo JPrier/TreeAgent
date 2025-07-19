@@ -10,6 +10,11 @@ class BaseModelAccessor(ABC):
         pass
 
     @abstractmethod
+    def call_model(self, prompt: str, schema) -> Any:
+        """Simpler helper for tests and lightweight callers"""
+        pass
+
+    @abstractmethod
     def execute_task_with_tools(
         self,
         model: str,

@@ -37,6 +37,7 @@ class InMemoryStorage:
 
 def test_orchestrator_runs_all_tasks(monkeypatch, tmp_path):
     rules = {
+        "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
         "HLD": {"can_spawn": {"IMPLEMENT": 1}, "self_spawn": False},
         "IMPLEMENT": {"can_spawn": {}, "self_spawn": False},
     }
@@ -56,7 +57,17 @@ def test_orchestrator_runs_all_tasks(monkeypatch, tmp_path):
             return ImplementedResponse(content="done").model_dump()
         return node
 
-    node_map = {TaskType.HLD: hld_factory, TaskType.IMPLEMENT: lambda acc: impl_factory()}
+    def req_factory(_acc):
+        def node(task, config=None):
+            assert isinstance(task, Task)
+            return ImplementedResponse(content="clear").model_dump()
+        return node
+
+    node_map = {
+        TaskType.REQUIREMENTS: req_factory,
+        TaskType.HLD: hld_factory,
+        TaskType.IMPLEMENT: lambda acc: impl_factory(),
+    }
     monkeypatch.setattr(orchestrator, "NODE_FACTORY", node_map, raising=False)
     monkeypatch.setattr(orchestrator.orchestrator, "NODE_FACTORY", node_map, raising=False)
     monkeypatch.setattr(
@@ -72,7 +83,11 @@ def test_orchestrator_runs_all_tasks(monkeypatch, tmp_path):
     orch = orchestrator.AgentOrchestrator(config_path=str(path))
     project = orch.implement_project("proj", checkpoint_dir=str(tmp_path))
 
-    assert [t.type for t in project.completedTasks] == [TaskType.HLD, TaskType.IMPLEMENT]
+    assert [t.type for t in project.completedTasks] == [
+        TaskType.REQUIREMENTS,
+        TaskType.HLD,
+        TaskType.IMPLEMENT,
+    ]
     assert not project.failedTasks
     assert not project.inProgressTasks
     assert not project.queuedTasks
@@ -80,6 +95,7 @@ def test_orchestrator_runs_all_tasks(monkeypatch, tmp_path):
 
 def test_spawn_rule_limit(monkeypatch, tmp_path):
     rules = {
+        "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
         "HLD": {"can_spawn": {"IMPLEMENT": 1}, "self_spawn": False},
         "IMPLEMENT": {"can_spawn": {}, "self_spawn": False},
     }
@@ -100,7 +116,16 @@ def test_spawn_rule_limit(monkeypatch, tmp_path):
             return ImplementedResponse(content="done").model_dump()
         return node
 
-    node_map = {TaskType.HLD: hld_factory, TaskType.IMPLEMENT: lambda acc: impl_factory()}
+    def req_factory(_acc):
+        def node(task, config=None):
+            return ImplementedResponse().model_dump()
+        return node
+
+    node_map = {
+        TaskType.REQUIREMENTS: req_factory,
+        TaskType.HLD: hld_factory,
+        TaskType.IMPLEMENT: lambda acc: impl_factory(),
+    }
     monkeypatch.setattr(orchestrator, "NODE_FACTORY", node_map, raising=False)
     monkeypatch.setattr(
         orchestrator.AgentOrchestrator,
@@ -123,6 +148,7 @@ def test_spawn_rule_limit(monkeypatch, tmp_path):
 
 def test_resume_from_checkpoint(monkeypatch, tmp_path):
     rules = {
+        "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
         "HLD": {"can_spawn": {"IMPLEMENT": 2}, "self_spawn": False},
         "IMPLEMENT": {"can_spawn": {}, "self_spawn": False},
     }
@@ -144,7 +170,16 @@ def test_resume_from_checkpoint(monkeypatch, tmp_path):
             return ImplementedResponse(content="done").model_dump()
         return node
 
-    node_map = {TaskType.HLD: hld_factory, TaskType.IMPLEMENT: lambda acc: impl_factory()}
+    def req_factory(_acc):
+        def node(task, config=None):
+            return ImplementedResponse().model_dump()
+        return node
+
+    node_map = {
+        TaskType.REQUIREMENTS: req_factory,
+        TaskType.HLD: hld_factory,
+        TaskType.IMPLEMENT: lambda acc: impl_factory(),
+    }
     monkeypatch.setattr(orchestrator, "NODE_FACTORY", node_map, raising=False)
     monkeypatch.setattr(
         orchestrator.AgentOrchestrator,
@@ -179,12 +214,13 @@ def test_resume_from_checkpoint(monkeypatch, tmp_path):
 
     completed = [t.type for t in project.completedTasks]
     assert completed.count(TaskType.IMPLEMENT) == 2
-    assert completed[0] == TaskType.HLD
+    assert completed[0] == TaskType.REQUIREMENTS
     assert not project.failedTasks
     assert not project.queuedTasks
 
 def test_self_spawn_blocked(monkeypatch, tmp_path):
     rules = {
+        "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
         "HLD": {"can_spawn": {"HLD": 2}, "self_spawn": False},
     }
     path = tmp_path / "rules.json"
@@ -198,7 +234,17 @@ def test_self_spawn_blocked(monkeypatch, tmp_path):
             return DecomposedResponse(subtasks=[sub1, sub2]).model_dump()
         return node
 
-    monkeypatch.setattr(orchestrator, "NODE_FACTORY", {TaskType.HLD: hld_factory}, raising=False)
+    def req_factory(_acc):
+        def node(task, config=None):
+            return ImplementedResponse().model_dump()
+        return node
+
+    monkeypatch.setattr(
+        orchestrator,
+        "NODE_FACTORY",
+        {TaskType.REQUIREMENTS: req_factory, TaskType.HLD: hld_factory},
+        raising=False,
+    )
     monkeypatch.setattr(
         orchestrator.AgentOrchestrator,
         "_get_accessor",
@@ -212,13 +258,17 @@ def test_self_spawn_blocked(monkeypatch, tmp_path):
     orch = orchestrator.AgentOrchestrator(config_path=str(path))
     project = orch.implement_project("proj", checkpoint_dir=str(tmp_path))
 
-    assert [t.type for t in project.completedTasks] == [TaskType.HLD]
+    assert [t.type for t in project.completedTasks] == [
+        TaskType.REQUIREMENTS,
+        TaskType.HLD,
+    ]
     assert not project.failedTasks
     assert not project.queuedTasks
 
 
 def test_checkpoint_written(monkeypatch, tmp_path):
     rules = {
+        "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
         "HLD": {"can_spawn": {"IMPLEMENT": 1}, "self_spawn": False},
         "IMPLEMENT": {"can_spawn": {}, "self_spawn": False},
     }
@@ -238,7 +288,16 @@ def test_checkpoint_written(monkeypatch, tmp_path):
             return ImplementedResponse(content="done").model_dump()
         return node
 
-    node_map = {TaskType.HLD: hld_factory, TaskType.IMPLEMENT: lambda acc: impl_factory()}
+    def req_factory(_acc):
+        def node(task, config=None):
+            return ImplementedResponse().model_dump()
+        return node
+
+    node_map = {
+        TaskType.REQUIREMENTS: req_factory,
+        TaskType.HLD: hld_factory,
+        TaskType.IMPLEMENT: lambda acc: impl_factory(),
+    }
     monkeypatch.setattr(orchestrator, "NODE_FACTORY", node_map, raising=False)
     monkeypatch.setattr(
         orchestrator.AgentOrchestrator,

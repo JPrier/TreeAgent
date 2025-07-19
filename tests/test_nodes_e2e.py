@@ -42,6 +42,7 @@ def _research_exec(model: str, system_prompt: str, user_prompt: str, tools=None)
 
 
 RULES = {
+    "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
     "HLD": {"can_spawn": {"RESEARCH": 1, "IMPLEMENT": 1, "REVIEW": 1, "TEST": 1, "DEPLOY": 1}, "self_spawn": False},
     "RESEARCH": {"can_spawn": {}, "self_spawn": False},
     "IMPLEMENT": {"can_spawn": {}, "self_spawn": False},
@@ -90,6 +91,7 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
 
     completed = [t.type for t in project.completedTasks]
     assert completed == [
+        TaskType.REQUIREMENTS,
         TaskType.HLD,
         TaskType.RESEARCH,
         TaskType.IMPLEMENT,
@@ -100,7 +102,7 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     assert not project.failedTasks
     assert not project.queuedTasks
 
-    root_task = project.completedTasks[0]
+    root_task = project.completedTasks[1]
     root_resp = project.taskResults[root_task.id]
     assert isinstance(root_resp, DecomposedResponse)
     assert [t.type for t in root_resp.subtasks] == [
@@ -112,7 +114,7 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     ]
     assert all(t.parent_id == root_task.id for t in root_resp.subtasks)
 
-    research_task, impl_task, review_task, test_task, deploy_task = project.completedTasks[1:]
+    research_task, impl_task, review_task, test_task, deploy_task = project.completedTasks[2:]
     assert project.taskResults[research_task.id] == ImplementedResponse(artifacts=["https://example.com"])
     assert project.taskResults[impl_task.id] == ImplementedResponse(content="def foo(): pass", artifacts=["foo.py"])
     assert project.taskResults[review_task.id] == ImplementedResponse(content="reviewed")
