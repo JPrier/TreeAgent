@@ -1,5 +1,6 @@
 from typing import Any
 
+from agentNodes.base_node import AgentNode
 from modelAccessors.base_accessor import BaseModelAccessor
 
 from dataModel.task import Task
@@ -10,7 +11,7 @@ from dataModel.model_response import (
 )
 
 
-class Clarifier:
+class Clarifier(AgentNode):
     """Decides whether the root task needs clarifying questions."""
 
     PROMPT_TEMPLATE = (
@@ -40,6 +41,3 @@ class Clarifier:
         )
         return result
 
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
-        """Entry point for the orchestrator."""
-        return self.execute_task(task).model_dump()
