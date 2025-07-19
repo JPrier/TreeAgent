@@ -1,16 +1,15 @@
-from typing import Any
-
+from agentNodes.base_node import AgentNode
 from dataModel.task import Task
 
-from dataModel.model_response import ImplementedResponse
+from dataModel.model_response import ModelResponse, ImplementedResponse
 
 
-class Tester:
+class Tester(AgentNode):
     """Runs tests on the implementation."""
 
     SCHEMA = ImplementedResponse
 
-    def __call__(self, task: Task | None = None, config: dict[str, Any] | None = None) -> dict:
+    def execute_task(self, task: Task | None = None) -> ModelResponse:
         """Return a stub test result."""
         resp = ImplementedResponse(content="pytest passed")
-        return resp.model_dump()
+        return resp

@@ -1,5 +1,4 @@
-from typing import Any
-
+from agentNodes.base_node import AgentNode
 from modelAccessors.base_accessor import BaseModelAccessor
 
 from dataModel.task import Task
@@ -10,7 +9,7 @@ from dataModel.model_response import (
 )
 
 
-class HLDDesigner:
+class HLDDesigner(AgentNode):
     """Node that requests a high-level design from an LLM."""
 
     PROMPT_TEMPLATE = (
@@ -35,6 +34,3 @@ class HLDDesigner:
         response: ModelResponse = self.llm_accessor.call_model(prompt, HLDDesigner.SCHEMA)
         return response
 
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
-        """Execute and return a serialisable dict."""
-        return self.execute_task(task).model_dump()

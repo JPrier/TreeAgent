@@ -1,5 +1,4 @@
-from typing import Any
-
+from agentNodes.base_node import AgentNode
 from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.model_response import ModelResponse, ImplementedResponse
 from dataModel.task import Task
@@ -7,7 +6,7 @@ from dataModel.task import Task
 from tools.web_search import WEB_SEARCH_TOOL
 
 
-class Researcher:
+class Researcher(AgentNode):
     """Gathers research artifacts using web search."""
 
     PROMPT_TEMPLATE = "{query}"
@@ -33,6 +32,3 @@ class Researcher:
         result: ModelResponse = self.run_llm_agent(task)
         return result
 
-    def __call__(self, task: Task, config: dict[str, Any] | None = None) -> dict:
-        """Execute and return a serialisable dict."""
-        return self.execute_task(task).model_dump()
