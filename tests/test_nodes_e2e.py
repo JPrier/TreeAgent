@@ -1,4 +1,6 @@
-from orchestrator import NODE_FACTORY, AgentOrchestrator
+from orchestrator import NODE_FACTORY, AgentOrchestrator, load_project_state
+from dataManagement import project_manager
+from datetime import datetime, timedelta
 from agentNodes.researcher import Researcher
 from agentNodes.hld_designer import HLDDesigner
 from agentNodes.implementer import Implementer
@@ -81,6 +83,8 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
 
     monkeypatch.setattr(AgentOrchestrator, "_get_accessor", lambda self, t: MockAccessor())
 
+
+
     orch = AgentOrchestrator(config_path=str(path))
     project = orch.implement_project("build", checkpoint_dir=str(tmp_path))
 
@@ -119,3 +123,67 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     response_types = {type(resp) for resp in project.taskResults.values()}
     assert DecomposedResponse in response_types
     assert ImplementedResponse in response_types
+
+
+def test_end_to_end_checkpoint_resume(monkeypatch, tmp_path):
+    path = tmp_path / "rules.json"
+    path.write_text(json.dumps(RULES))
+
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.HLD,
+        lambda acc: HLDDesigner(_patch_accessor(acc, call_model=_hld_call_model)),
+    )
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.RESEARCH,
+        lambda acc: Researcher(_patch_accessor(acc, exec_tools=_research_exec)),
+    )
+    monkeypatch.setitem(NODE_FACTORY, TaskType.IMPLEMENT, lambda acc: Implementer())
+
+    def _review_node(task, config=None):
+        assert isinstance(task, Task)
+        return ImplementedResponse(content="reviewed").model_dump()
+
+    def _deploy_node(task, config=None):
+        assert isinstance(task, Task)
+        return ImplementedResponse(content="deployed").model_dump()
+
+    monkeypatch.setitem(NODE_FACTORY, TaskType.REVIEW, lambda acc: _review_node)
+    monkeypatch.setitem(NODE_FACTORY, TaskType.TEST, lambda acc: Tester())
+    monkeypatch.setitem(NODE_FACTORY, TaskType.DEPLOY, lambda acc: _deploy_node)
+
+    monkeypatch.setattr(AgentOrchestrator, "_get_accessor", lambda self, t: MockAccessor())
+
+    start = datetime(2025, 1, 1)
+
+    class FakeDatetime(datetime):  # type: ignore[misc]
+        counter = 0
+
+        @classmethod
+        def utcnow(cls):  # type: ignore[override]
+            cls.counter += 1
+            return start + timedelta(seconds=cls.counter)
+
+    monkeypatch.setattr(project_manager, "datetime", FakeDatetime)
+
+    orch = AgentOrchestrator(config_path=str(path))
+    project = orch.implement_project("build", checkpoint_dir=str(tmp_path))
+
+    run_dir = next(p for p in tmp_path.iterdir() if p.is_dir())
+    snapshots = sorted(run_dir.glob("*.json"))
+    assert snapshots
+
+    expected_total = len(project.completedTasks) + 1
+    assert len(snapshots) == expected_total
+
+    for idx, snap in enumerate(snapshots[:-1]):
+        loaded = load_project_state(snap)
+        completed_ids = [t.id for t in loaded.completedTasks]
+        assert completed_ids == [t.id for t in project.completedTasks][: idx + 1]
+
+    loaded = load_project_state(snapshots[-1])
+    assert loaded == project
+
+    resumed = orch.resume_project(str(run_dir))
+    assert resumed == project
