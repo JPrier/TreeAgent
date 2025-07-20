@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
-from typing import Callable, Any
+import logging
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Callable
+
+from logging_utils import init_logger
 
 from pydantic import TypeAdapter
 
@@ -50,8 +53,17 @@ NODE_FACTORY: dict[TaskType, Callable[[BaseModelAccessor], Any]] = {
 
 
 class AgentOrchestrator:
-    def __init__(self, config_path: str | None = None):
+    def __init__(
+        self,
+        config_path: str | None = None,
+        *,
+        verbose: bool = False,
+        logger: logging.Logger | None = None,
+    ) -> None:
         """Load spawn rules and prepare orchestrator."""
+        self.verbose = verbose
+        self.logger = logger or init_logger(self.__class__.__name__, verbose)
+
         cfg_path: Path | None
         if config_path:
             cfg_path = Path(config_path)
@@ -147,6 +159,14 @@ class AgentOrchestrator:
             current_task.status = TaskStatus.IN_PROGRESS
             project.inProgressTasks.append(current_task)
 
+            self.logger.info(
+                "Executing %s (%s) using %s",
+                current_task.id,
+                current_task.type.name,
+                current_task.model.accessor_type.value,
+            )
+            self.logger.debug("Description: %s", current_task.description)
+
             accessor = self._get_accessor(current_task.model.accessor_type)
             factory = NODE_FACTORY.get(current_task.type)
             if not factory:
@@ -163,6 +183,7 @@ class AgentOrchestrator:
 
             try:
                 response_dict = node(current_task)
+                self.logger.debug("Raw response dict: %s", response_dict)
                 response = adapter.validate_python(response_dict)
             except Exception as exc:  # noqa: BLE001
                 current_task.status = TaskStatus.FAILED
@@ -172,6 +193,7 @@ class AgentOrchestrator:
                 project.taskResults[current_task.id] = failure
                 project.latestResponse = failure
                 save_project_state(project, checkpoint_dir)
+                self.logger.error("Task %s failed: %s", current_task.id, str(exc))
                 continue
 
             project.taskResults[current_task.id] = response
@@ -185,6 +207,11 @@ class AgentOrchestrator:
                     current_task.status = TaskStatus.COMPLETED
                     project.inProgressTasks.remove(current_task)
                     project.completedTasks.append(current_task)
+                    self.logger.info(
+                        "%s task completed: produced %d subtasks",
+                        current_task.type.name,
+                        len(response.subtasks),
+                    )
                 case ModelResponseType.IMPLEMENTED:
                     assert isinstance(response, ImplementedResponse)
                     if current_task.type is TaskType.REQUIREMENTS:
@@ -198,6 +225,11 @@ class AgentOrchestrator:
                     current_task.status = TaskStatus.COMPLETED
                     project.inProgressTasks.remove(current_task)
                     project.completedTasks.append(current_task)
+                    self.logger.info(
+                        "%s task completed: artifacts %s",
+                        current_task.type.name,
+                        ", ".join(response.artifacts) if response.artifacts else "none",
+                    )
                 case ModelResponseType.FOLLOW_UP_REQUIRED:
                     assert isinstance(response, FollowUpResponse)
                     if current_task.type is TaskType.REQUIREMENTS:
@@ -218,11 +250,13 @@ class AgentOrchestrator:
                         current_task.status = TaskStatus.BLOCKED
                         project.inProgressTasks.remove(current_task)
                         project.failedTasks.append(current_task)
+                    self.logger.info("%s task requires follow up", current_task.type.name)
                 case ModelResponseType.FAILED:
                     assert isinstance(response, FailedResponse)
                     current_task.status = TaskStatus.FAILED
                     project.inProgressTasks.remove(current_task)
                     project.failedTasks.append(current_task)
+                    self.logger.error("Task %s failed: %s", current_task.id, response.error_message)
 
             save_project_state(project, checkpoint_dir)
 
