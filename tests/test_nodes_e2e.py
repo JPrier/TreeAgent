@@ -41,6 +41,14 @@ def _research_exec(model: str, system_prompt: str, user_prompt: str, tools=None)
     return ImplementedResponse(artifacts=["https://example.com"])
 
 
+def _impl_call_model(prompt: str, schema):
+    return ImplementedResponse(content="def foo(): pass", artifacts=["foo.py"])
+
+
+def _test_call_model(prompt: str, schema):
+    return ImplementedResponse(content="pytest passed")
+
+
 RULES = {
     "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
     "HLD": {"can_spawn": {"RESEARCH": 1, "IMPLEMENT": 1, "REVIEW": 1, "TEST": 1, "DEPLOY": 1}, "self_spawn": False},
@@ -66,7 +74,11 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
         TaskType.RESEARCH,
         lambda acc: Researcher(_patch_accessor(acc, exec_tools=_research_exec)),
     )
-    monkeypatch.setitem(NODE_FACTORY, TaskType.IMPLEMENT, lambda acc: Implementer())
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.IMPLEMENT,
+        lambda acc: Implementer(_patch_accessor(acc, call_model=_impl_call_model))
+    )
 
     def _review_node(task, config=None):
         assert isinstance(task, Task)
@@ -79,7 +91,11 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
         return ImplementedResponse(content="deployed", artifacts=["foo.py"]).model_dump()
 
     monkeypatch.setitem(NODE_FACTORY, TaskType.REVIEW, lambda acc: _review_node)
-    monkeypatch.setitem(NODE_FACTORY, TaskType.TEST, lambda acc: Tester())
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.TEST,
+        lambda acc: Tester(_patch_accessor(acc, call_model=_test_call_model)),
+    )
     monkeypatch.setitem(NODE_FACTORY, TaskType.DEPLOY, lambda acc: _deploy_node)
 
     monkeypatch.setattr(AgentOrchestrator, "_get_accessor", lambda self, t: MockAccessor())
@@ -141,7 +157,11 @@ def test_end_to_end_checkpoint_resume(monkeypatch, tmp_path):
         TaskType.RESEARCH,
         lambda acc: Researcher(_patch_accessor(acc, exec_tools=_research_exec)),
     )
-    monkeypatch.setitem(NODE_FACTORY, TaskType.IMPLEMENT, lambda acc: Implementer())
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.IMPLEMENT,
+        lambda acc: Implementer(_patch_accessor(acc, call_model=_impl_call_model))
+    )
 
     def _review_node(task, config=None):
         assert isinstance(task, Task)
@@ -152,7 +172,11 @@ def test_end_to_end_checkpoint_resume(monkeypatch, tmp_path):
         return ImplementedResponse(content="deployed").model_dump()
 
     monkeypatch.setitem(NODE_FACTORY, TaskType.REVIEW, lambda acc: _review_node)
-    monkeypatch.setitem(NODE_FACTORY, TaskType.TEST, lambda acc: Tester())
+    monkeypatch.setitem(
+        NODE_FACTORY,
+        TaskType.TEST,
+        lambda acc: Tester(_patch_accessor(acc, call_model=_test_call_model)),
+    )
     monkeypatch.setitem(NODE_FACTORY, TaskType.DEPLOY, lambda acc: _deploy_node)
 
     monkeypatch.setattr(AgentOrchestrator, "_get_accessor", lambda self, t: MockAccessor())
