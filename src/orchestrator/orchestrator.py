@@ -42,9 +42,9 @@ NODE_FACTORY: dict[TaskType, Callable[[BaseModelAccessor], Any]] = {
     TaskType.RESEARCH: lambda acc: Researcher(acc),
     TaskType.HLD: lambda acc: HLDDesigner(acc),
     TaskType.LLD: lambda acc: LLDDesigner(acc),
-    TaskType.IMPLEMENT: lambda acc: Implementer(),
+    TaskType.IMPLEMENT: lambda acc: Implementer(acc),
     TaskType.REVIEW: lambda acc: Reviewer(),
-    TaskType.TEST: lambda acc: Tester(),
+    TaskType.TEST: lambda acc: Tester(acc),
     TaskType.DEPLOY: lambda acc: Deployer(),
 }
 
