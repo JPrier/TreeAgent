@@ -1,7 +1,7 @@
 # TreeAgent 🌳🤖 (MVP)
 
-TreeAgent is a tiny, work-in-progress experiment in **hierarchical, multi-agent orchestration** for code-generation tasks.  
-It is maintained by a single developer and **has not been run, profiled, or tested end-to-end yet**. Expect breaking changes and dragons. 🐉
+TreeAgent is a tiny, work-in-progress experiment in **hierarchical, multi-agent orchestration** for code-generation tasks.
+It is maintained by a single developer and is under active development. Expect breaking changes and dragons. 🐉
 
 ---
 
@@ -25,8 +25,8 @@ Why bother?
 | Core data models (`Task`, `ModelResponse`) | ✅ Drafted | Pydantic schemas in `src/dataModel/` |
 | Recursive orchestration (`AgentOrchestrator`)           | ✅ First pass | Needs error handling & logging |
 | Parallel execution logic                                | 🟡 Prototype | Sibling-task **non-concurrency** still WIP |
-| CLI / entry-point                                      | 🟥 Todo | Basic `python -m treeagent …` runner planned |
-| Tests & CI                                             | 🟥 Todo | No unit tests yet |
+| CLI / entry-point                                      | ✅ Basic CLI | `treeagent` command available |
+| Tests & CI                                             | ✅ Passing | pytest & ruff via GitHub Actions |
 | Docs / examples                                        | 🟥 Todo | This README is step 1 |
 
 ---
@@ -37,8 +37,8 @@ Why bother?
 git clone https://github.com/JPrier/TreeAgent.git
 cd TreeAgent
 python3.11 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt   # very small for now
-python -m treeagent.demo          # stub script prints skeleton task tree
+pip install -e .                  # install package and CLI
+treeagent "hello world"           # prints skeleton task tree
 ```
 
 > Heads-up: you’ll need an OpenAI (or other) API key in your shell once the first agent stubs call an LLM.
@@ -51,7 +51,7 @@ TreeAgent/
 │   ├── orchestrator/
 │   ├── dataModel/          # pydantic task / response schemas
 │   └── ...
-├── examples/               # minimal end-to-end scenarios (coming soon)
+├── config/                 # spawn rules
 ├── tests/                  # pytest suite
 ├── requirements.txt
 └── README.md
