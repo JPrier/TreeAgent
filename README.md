@@ -12,9 +12,33 @@ hands them to **planner** and **executor** child agents, and bubbles results bac
 
 Why bother?
 
-1. **Deliberate planning.** Test-time tree structures let small models explore alternative plans instead of committing to the first idea.  
-2. **Isolation & safety.** Each node operates with a minimal toolset and context window, keeping accidental prompt leaks and runaway costs in check.  
+1. **Deliberate planning.** Test-time tree structures let small models explore alternative plans instead of committing to the first idea.
+2. **Isolation & safety.** Each node operates with a minimal toolset and context window, keeping accidental prompt leaks and runaway costs in check.
 3. **Modularity.** Nodes live in their own Python packages so they can be swapped, parallelised, or rate-limited independently.
+4. **Reliability over speed.** Accuracy, determinism, and self-sufficiency matter more than raw latency.
+
+## 🔥 TreeAgent Tenets
+
+Latency is not a priority. Every decision, interaction, and tool should serve correctness and reliability over speed.
+
+### 🧠 Core Objective: Accurate & Reliable Results
+- **Maximize Accuracy of Results** – every agent decision should be correct, relevant, and grounded. Prompts, tools, and workflows must work together to reduce hallucination, ensure logical soundness, and complete tasks exactly as intended.
+- **Maximize Determinism** – given the same input and tool access, the same result should be produced. Agent behavior is controlled via fixed prompt templates, stateless tool usage, temperature=0, and reproducible workflows.
+- **Minimize Human Interaction** – the agent should operate independently unless it explicitly detects uncertainty or conflict. When it needs help it must generate a clear, minimal escalation query with all needed context so the issue can be resolved once and work can resume.
+
+### ⚙️ Execution Optimization: Resource Efficiency
+- **Minimize Number of LLM Requests** – avoid unnecessary decompositions, reuse validated outputs, and skip trivial steps whenever possible, but never at the cost of accuracy or completeness.
+- **Minimize External Dependencies** – prefer local, auditable tooling and offline workflows. Cloud APIs are optional, not required.
+- **Minimize Prompt Context Size** – keep context tightly scoped to what's essential to reduce token usage, improve focus, and enforce a single source of truth. Brevity must never undermine correctness.
+
+### 🧭 Tradeoff Philosophy
+If a tradeoff must be made between speed and correctness:
+
+✅ Always choose correctness.
+✅ Always choose determinism.
+✅ Always choose self-sufficiency.
+❌ Never choose speed at the cost of reliability.
+❌ Never trust model inference without verification.
 
 ---
 
