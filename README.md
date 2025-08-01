@@ -16,7 +16,7 @@ Human engineers solve complex problems by structuring them. They begin with a Hi
 
 TreeAgent applies this principle to autonomous agents. It transforms vague requests into structured workflows, using layered agents with strict roles and limited context. Each LLM interaction is minimized, targeted, and constrained to ensure correctness and reproducibility—not speculation.
 
-Build an “AI engineering tree” where a root agent (like a Principal Engineer) decomposes a request and delegates to a hierarchy of sub-agents—planners, designers, implementers, reviewers, and more— to solve the problem accurately, deterministically, and autonomously, using consumer-grade hardware, with no cloud APIs and no human intervention unless truly necessary.
+> Build an “AI engineering tree” where a root agent (like a Principal Engineer) decomposes a request and delegates to a hierarchy of sub-agents—planners, designers, implementers, reviewers, and more— to solve the problem accurately, deterministically, and autonomously, using consumer-grade hardware, with no cloud APIs and no human intervention unless truly necessary.
 
 ## Why This Exists
 
