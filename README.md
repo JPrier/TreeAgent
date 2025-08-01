@@ -1,20 +1,63 @@
-# TreeAgent 🌳🤖 (MVP)
+# TreeAgent (MVP)
 
-TreeAgent is a tiny, work-in-progress experiment in **hierarchical, multi-agent orchestration** for code-generation tasks.
-It is maintained by a single developer and is under active development. Expect breaking changes and dragons. 🐉
+TreeAgent is a work-in-progress experiment in hierarchical, deterministic multi-agent orchestration for software engineering tasks.
+
+It is designed, built, and maintained by a single developer. Expect rapid iteration, sharp edges, and opinionated design.
 
 ---
 
-## ✨ Project Goal
+## Project Goal
 
-*Create an “AI engineering tree” where a **root agent** (the “Principal Engineer”) decomposes a user request into subtasks,  
-hands them to **planner** and **executor** child agents, and bubbles results back up—all on consumer hardware, entirely offline if desired.*
+Modern AI coding agents often produce code that is inconsistent, insecure, duplicative, or strangely structured. These problems stem largely from the design assumption that a single LLM with a large context window should manage everything—retain full knowledge, select from many tools, and make countless tiny decisions.
 
-Why bother?
+But this isn't how human engineers work.
 
-1. **Deliberate planning.** Test-time tree structures let small models explore alternative plans instead of committing to the first idea.  
-2. **Isolation & safety.** Each node operates with a minimal toolset and context window, keeping accidental prompt leaks and runaway costs in check.  
-3. **Modularity.** Nodes live in their own Python packages so they can be swapped, parallelised, or rate-limited independently.
+Human engineers solve complex problems by structuring them. They begin with a High-Level Design (HLD) to outline the approach, then break it down into Low-Level Designs (LLDs) and discrete units of work. These are passed to others who may not have the original context—but can contribute reliably because each task is scoped, reviewed, and clearly defined.
+
+TreeAgent applies this principle to autonomous agents. It transforms vague requests into structured workflows, using layered agents with strict roles and limited context. Each LLM interaction is minimized, targeted, and constrained to ensure correctness and reproducibility—not speculation.
+
+Build an “AI engineering tree” where a root agent (like a Principal Engineer) decomposes a request and delegates to a hierarchy of sub-agents—planners, designers, implementers, reviewers, and more— to solve the problem accurately, deterministically, and autonomously, using consumer-grade hardware, with no cloud APIs and no human intervention unless truly necessary.
+
+## Why This Exists
+
+TreeAgent is built around a few non-negotiable beliefs:
+
+✅ Correctness is king. Accuracy and logical consistency come before speed or style.
+
+✅ Determinism is essential. The same input should always yield the same result.
+
+✅ Autonomy is the goal. Agents must operate independently, escalate only when stuck, and self-verify results.
+
+✅ Latency is irrelevant. We prefer a slow, correct agent over a fast, wrong one.
+
+✅ LLMs are tools, not magic. All actions must be grounded in real inputs and audited outputs.
+
+✅ Local-first. Everything should work offline, without vendor lock-in or hosted dependencies.
+
+TreeAgent is not a chatbot. It is not a copilot. It is a workflow engine—and it plays by strict rules to get reliable results from unreliable components.
+
+## 🔥 TreeAgent Tenets
+
+Latency is not a priority. Every decision, interaction, and tool should serve correctness and reliability over speed.
+
+### 🧠 Core Objective: Accurate & Reliable Results
+- **Maximize Accuracy of Results** – every agent decision should be correct, relevant, and grounded. Prompts, tools, and workflows must work together to reduce hallucination, ensure logical soundness, and complete tasks exactly as intended.
+- **Maximize Determinism** – given the same input and tool access, the same result should be produced. Agent behavior is controlled via fixed prompt templates, stateless tool usage, temperature=0, and reproducible workflows.
+- **Minimize Human Interaction** – the agent should operate independently unless it explicitly detects uncertainty or conflict. When it needs help it must generate a clear, minimal escalation query with all needed context so the issue can be resolved once and work can resume.
+
+### ⚙️ Execution Optimization: Resource Efficiency
+- **Minimize Number of LLM Requests** – avoid unnecessary decompositions, reuse validated outputs, and skip trivial steps whenever possible, but never at the cost of accuracy or completeness.
+- **Minimize External Dependencies** – prefer local, auditable tooling and offline workflows. Cloud APIs are optional, not required.
+- **Minimize Prompt Context Size** – keep context tightly scoped to what's essential to reduce token usage, improve focus, and enforce a single source of truth. Brevity must never undermine correctness.
+
+### 🧭 Tradeoff Philosophy
+If a tradeoff must be made between speed and correctness:
+
+✅ Always choose correctness.
+✅ Always choose determinism.
+✅ Always choose self-sufficiency.
+❌ Never choose speed at the cost of reliability.
+❌ Never trust model inference without verification.
 
 ---
 
