@@ -17,6 +17,7 @@ class TaskType(str, Enum):
     IMPLEMENT = "implement"
     REVIEW = "review"
     TEST = "test"
+    JURY = "jury"
     DEPLOY = "deploy"
 
 
