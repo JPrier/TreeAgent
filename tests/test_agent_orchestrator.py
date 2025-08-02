@@ -127,6 +127,7 @@ def test_spawn_rule_limit(monkeypatch, tmp_path):
         TaskType.IMPLEMENT: lambda acc: impl_factory(),
     }
     monkeypatch.setattr(orchestrator, "NODE_FACTORY", node_map, raising=False)
+    monkeypatch.setattr(orchestrator.orchestrator, "NODE_FACTORY", node_map, raising=False)
     monkeypatch.setattr(
         orchestrator.AgentOrchestrator,
         "_get_accessor",
@@ -317,4 +318,56 @@ def test_checkpoint_written(monkeypatch, tmp_path):
     assert storage.snapshots, "no checkpoint files"
     loaded = storage.load_project_state(storage.snapshots[-1][0])
     assert loaded.completedTasks == project.completedTasks
+
+
+def test_jury_spawn_limit(monkeypatch, tmp_path):
+    rules = {
+        "REQUIREMENTS": {"can_spawn": {"HLD": 1}, "self_spawn": False},
+        "HLD": {"can_spawn": {"JURY": 1}, "self_spawn": False},
+        "JURY": {"can_spawn": {}, "self_spawn": False},
+    }
+    path = tmp_path / "rules.json"
+    path.write_text(json.dumps(rules))
+
+    def hld_factory(_acc):
+        def node(task, config=None):
+            sub1 = Task(id="j1", description="eval1", type=TaskType.JURY)
+            sub2 = Task(id="j2", description="eval2", type=TaskType.JURY)
+            return DecomposedResponse(subtasks=[sub1, sub2]).model_dump()
+        return node
+
+    def jury_factory(_acc):
+        def node(task, config=None):
+            return ImplementedResponse(content="ok").model_dump()
+        return node
+
+    def req_factory(_acc):
+        def node(task, config=None):
+            return ImplementedResponse().model_dump()
+        return node
+
+    node_map = {
+        TaskType.REQUIREMENTS: req_factory,
+        TaskType.HLD: hld_factory,
+        TaskType.JURY: jury_factory,
+    }
+    monkeypatch.setattr(orchestrator, "NODE_FACTORY", node_map, raising=False)
+    monkeypatch.setattr(orchestrator.orchestrator, "NODE_FACTORY", node_map, raising=False)
+    monkeypatch.setattr(
+        orchestrator.AgentOrchestrator,
+        "_get_accessor",
+        lambda self, t: MockAccessor(),
+    )
+
+    storage = InMemoryStorage()
+    monkeypatch.setattr(orchestrator, "save_project_state", storage.save_project_state)
+    monkeypatch.setattr(orchestrator.orchestrator, "save_project_state", storage.save_project_state)
+
+    orch = orchestrator.AgentOrchestrator(config_path=str(path))
+    project = orch.implement_project("proj", checkpoint_dir=str(tmp_path))
+
+    completed_types = [t.type for t in project.completedTasks]
+    assert completed_types == [TaskType.REQUIREMENTS, TaskType.HLD, TaskType.JURY]
+    assert not project.failedTasks
+    assert not project.queuedTasks
 

@@ -38,6 +38,7 @@ from agentNodes.implementer import Implementer
 from agentNodes.reviewer import Reviewer
 from agentNodes.tester import Tester
 from agentNodes.deployer import Deployer
+from agentNodes.jury import Jury
 
 
 NODE_FACTORY: dict[TaskType, Callable[[BaseModelAccessor], Any]] = {
@@ -48,6 +49,7 @@ NODE_FACTORY: dict[TaskType, Callable[[BaseModelAccessor], Any]] = {
     TaskType.IMPLEMENT: lambda acc: Implementer(acc),
     TaskType.REVIEW: lambda acc: Reviewer(),
     TaskType.TEST: lambda acc: Tester(acc),
+    TaskType.JURY: lambda acc: Jury(acc),
     TaskType.DEPLOY: lambda acc: Deployer(),
 }
 
