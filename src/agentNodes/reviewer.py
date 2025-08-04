@@ -1,7 +1,7 @@
 from typing import Any
 
-from agentNodes.base_node import AgentNode
-from dataModel.model_response import (
+from src.agentNodes.base_node import AgentNode
+from src.dataModel.model_response import (
     ImplementedResponse,
     FailedResponse,
     ModelResponse,

@@ -4,7 +4,7 @@ from urllib.parse import quote
 
 from pydantic import BaseModel, Field, TypeAdapter
 
-from modelAccessors.data.tool import Tool
+from src.modelAccessors.data.tool import Tool
 
 MAX_RESULTS = 5
 MAX_ATTEMPTS = 2

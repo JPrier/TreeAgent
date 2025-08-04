@@ -1,11 +1,11 @@
 from .base_accessor import BaseModelAccessor, Tool
 from typing import Optional
-from dataModel.model_response import (
+from src.dataModel.model_response import (
     ModelResponse,
     DecomposedResponse,
     ImplementedResponse,
 )
-from dataModel.task import Task, TaskType
+from src.dataModel.task import Task, TaskType
 
 class MockAccessor(BaseModelAccessor):
     """Mock accessor for testing without API calls"""

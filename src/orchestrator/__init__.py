@@ -1,5 +1,5 @@
-from dataModel.project import Project
-from dataManagement.project_manager import (
+from src.dataModel.project import Project
+from src.dataManagement.project_manager import (
     save_project_state,
     load_project_state,
     latest_snapshot_path,

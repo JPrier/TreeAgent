@@ -1,8 +1,8 @@
-from agentNodes.base_node import AgentNode
-from modelAccessors.base_accessor import BaseModelAccessor
+from src.agentNodes.base_node import AgentNode
+from src.modelAccessors.base_accessor import BaseModelAccessor
 
-from dataModel.task import Task
-from dataModel.model_response import (
+from src.dataModel.task import Task
+from src.dataModel.model_response import (
     ModelResponse,
     DecomposedResponse,
     ImplementedResponse,

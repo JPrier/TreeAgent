@@ -1,6 +1,6 @@
 import subprocess
 
-from modelAccessors.data.tool import Tool
+from src.modelAccessors.data.tool import Tool
 
 
 class EnvManager:

@@ -1,9 +1,9 @@
 from __future__ import annotations
 
-from agentNodes.base_node import AgentNode
-from dataModel.model_response import ImplementedResponse, ModelResponse
-from dataModel.task import Task
-from modelAccessors.base_accessor import BaseModelAccessor
+from src.agentNodes.base_node import AgentNode
+from src.dataModel.model_response import ImplementedResponse, ModelResponse
+from src.dataModel.task import Task
+from src.modelAccessors.base_accessor import BaseModelAccessor
 
 
 class Jury(AgentNode):

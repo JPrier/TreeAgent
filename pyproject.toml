@@ -23,7 +23,7 @@ dev = [
 ]
 
 [project.scripts]
-treeagent = "cli:main"
+treeagent = "src.cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]

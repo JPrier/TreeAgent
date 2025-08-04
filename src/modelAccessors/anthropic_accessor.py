@@ -3,7 +3,7 @@ from typing import Any, Optional, Dict
 from pydantic import TypeAdapter
 from anthropic import Anthropic
 from .base_accessor import BaseModelAccessor, Tool
-from dataModel.model_response import ModelResponse
+from src.dataModel.model_response import ModelResponse
 
 class AnthropicAccessor(BaseModelAccessor):
     def __init__(self):

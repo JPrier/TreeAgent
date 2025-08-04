@@ -1,9 +1,9 @@
-from agentNodes.base_node import AgentNode
-from modelAccessors.base_accessor import BaseModelAccessor
-from dataModel.model_response import ModelResponse, ImplementedResponse
-from dataModel.task import Task
+from src.agentNodes.base_node import AgentNode
+from src.modelAccessors.base_accessor import BaseModelAccessor
+from src.dataModel.model_response import ModelResponse, ImplementedResponse
+from src.dataModel.task import Task
 
-from tools.web_search import WEB_SEARCH_TOOL
+from src.tools.web_search import WEB_SEARCH_TOOL
 
 
 class Researcher(AgentNode):

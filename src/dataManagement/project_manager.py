@@ -4,14 +4,14 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from dataModel.project import Project
+from src.dataModel.project import Project
 
 
 def save_project_state(project: Project, directory: str | Path) -> Path:
     """Save ``project`` to ``directory`` with a timestamped filename."""
     dir_path = Path(directory)
     dir_path.mkdir(parents=True, exist_ok=True)
-    timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
     file_path = dir_path / f"{timestamp}.json"
     tmp = file_path.with_suffix(file_path.suffix + ".tmp")
     tmp.write_text(json.dumps(project.model_dump(), indent=2))
