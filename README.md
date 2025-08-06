@@ -54,9 +54,13 @@ Latency is not a priority. Every decision, interaction, and tool should serve co
 If a tradeoff must be made between speed and correctness:
 
 ✅ Always choose correctness.
+
 ✅ Always choose determinism.
+
 ✅ Always choose self-sufficiency.
+
 ❌ Never choose speed at the cost of reliability.
+
 ❌ Never trust model inference without verification.
 
 ---
