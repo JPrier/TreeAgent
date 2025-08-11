@@ -4,11 +4,11 @@ from copy import deepcopy
 
 import pytest
 
-import orchestrator
-from dataModel.project import Project
-from dataModel.task import TaskType, Task
-from dataModel.model_response import DecomposedResponse, ImplementedResponse
-from modelAccessors.mock_accessor import MockAccessor
+import src.orchestrator as orchestrator
+from src.dataModel.project import Project
+from src.dataModel.task import TaskType, Task
+from src.dataModel.model_response import DecomposedResponse, ImplementedResponse
+from src.modelAccessors.mock_accessor import MockAccessor
 
 
 class InMemoryStorage:

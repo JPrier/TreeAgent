@@ -18,6 +18,6 @@ class Jury(AgentNode):
     def __init__(self, accessor: BaseModelAccessor) -> None:
         self.accessor = accessor
 
-    def execute_task(self, task: Task | None = None) -> ModelResponse:
+    def execute_task(self, data: Task | None = None) -> ModelResponse:
         """Return a placeholder verdict for ``task``."""
         return ImplementedResponse(content="jury verdict")

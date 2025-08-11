@@ -1,7 +1,7 @@
-from agentNodes.tester import Tester
-from modelAccessors.base_accessor import BaseModelAccessor
-from dataModel.model_response import ImplementedResponse
-from dataModel.task import Task, TaskType
+from src.agentNodes.tester import Tester
+from src.modelAccessors.base_accessor import BaseModelAccessor
+from src.dataModel.model_response import ImplementedResponse
+from src.dataModel.task import Task, TaskType
 
 
 class _StubAccessor(BaseModelAccessor):

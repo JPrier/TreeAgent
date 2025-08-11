@@ -13,9 +13,9 @@ class Reviewer(AgentNode):
 
     SCHEMA = ImplementedResponse | FailedResponse
 
-    def execute_task(self, state: dict[str, Any]) -> ModelResponse:
+    def execute_task(self, data: dict[str, Any]) -> ModelResponse:
         """Approve implementations that contain a ``def`` statement."""
-        last = state["last_response"]
+        last = data["last_response"]
         content = last.content or ""
         if "def" in content:
             resp = ImplementedResponse(content="LGTM", artifacts=last.artifacts)

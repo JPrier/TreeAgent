@@ -9,8 +9,8 @@ class Deployer(AgentNode):
 
     SCHEMA = ImplementedResponse
 
-    def execute_task(self, state: dict[str, Any]) -> ModelResponse:
+    def execute_task(self, data: dict[str, Any]) -> ModelResponse:
         """Return a stub deployment result."""
-        last = state["last_response"]
+        last = data["last_response"]
         resp = ImplementedResponse(content="deployed", artifacts=last.artifacts)
         return resp

@@ -31,10 +31,10 @@ class Clarifier(AgentNode):
         """
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, task: Task) -> ModelResponse:
+    def execute_task(self, data: Task) -> ModelResponse:
         """Ask the LLM whether the requirements need clarification."""
         result: ModelResponse = self.llm_accessor.call_model(
-            prompt=Clarifier.PROMPT_TEMPLATE.format(task=task.description),
+            prompt=Clarifier.PROMPT_TEMPLATE.format(task=data.description),
             schema=Clarifier.SCHEMA,
         )
         return result

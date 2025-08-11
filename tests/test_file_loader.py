@@ -1,5 +1,5 @@
 
-from search.file_loader import load_project_files, read_file
+from src.search.file_loader import load_project_files, read_file
 
 
 def test_load_project_files_filters(tmp_path):
@@ -24,11 +24,11 @@ def test_load_project_files_filters(tmp_path):
     (tmp_path / "src" / "note.tmp").write_text("ignore")
 
     files = load_project_files(tmp_path)
-    names = sorted(str(p.relative_to(tmp_path)) for p in files)
+    names = sorted(str(p.relative_to(tmp_path)).replace('\\', '/') for p in files)
     assert names == ["docs/readme.txt", "src/code.py"]
 
 
 def test_read_file_normalizes_newlines(tmp_path):
     path = tmp_path / "file.py"
-    path.write_text("a\r\nb\rc")
+    path.write_bytes(b"a\r\nb\rc")
     assert read_file(path) == "a\nb\nc"

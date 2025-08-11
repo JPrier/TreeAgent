@@ -20,11 +20,11 @@ class LLDDesigner(AgentNode):
         """Create the designer with the given model accessor."""
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, task: Task) -> ModelResponse:
+    def execute_task(self, data: Task) -> ModelResponse:
         """Generate low level design details for ``task``."""
         prompt = LLDDesigner.PROMPT_TEMPLATE.format(
-            description=task.description,
-            complexity=task.complexity,
+            description=data.description,
+            complexity=data.complexity,
         )
         response: ModelResponse = self.llm_accessor.call_model(prompt, LLDDesigner.SCHEMA)
         return response

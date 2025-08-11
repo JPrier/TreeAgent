@@ -19,9 +19,9 @@ class Tester(AgentNode):
     def __init__(self, llm_accessor: BaseModelAccessor) -> None:
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, task: Task | None = None) -> ModelResponse:
+    def execute_task(self, data: Task | None = None) -> ModelResponse:
         """Return test results for ``task`` using the LLM accessor."""
-        desc = task.description if task else ""
+        desc = data.description if data else ""
         prompt = Tester.PROMPT_TEMPLATE.format(description=desc)
         response: ModelResponse = self.llm_accessor.call_model(prompt, Tester.SCHEMA)
         return response

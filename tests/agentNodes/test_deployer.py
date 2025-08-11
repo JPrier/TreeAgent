@@ -1,7 +1,7 @@
 from pydantic import TypeAdapter
 
-from agentNodes.deployer import Deployer
-from dataModel.model_response import ImplementedResponse
+from src.agentNodes.deployer import Deployer
+from src.dataModel.model_response import ImplementedResponse
 
 
 def test_deployer_deploys():

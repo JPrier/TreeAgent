@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from dataModel import (
+from src.dataModel import (
     Task,
     TaskType,
     DecomposedResponse,
@@ -9,7 +9,7 @@ from dataModel import (
     FollowUpResponse,
     FailedResponse,
 )
-from tools.web_search import WEB_SEARCH_TOOL
+from src.tools.web_search import WEB_SEARCH_TOOL
 
 
 def build_task(task_id: str = "t1") -> Task:

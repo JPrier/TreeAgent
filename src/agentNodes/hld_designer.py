@@ -25,11 +25,11 @@ class HLDDesigner(AgentNode):
         """Create the designer with the given model accessor."""
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, task: Task) -> ModelResponse:
+    def execute_task(self, data: Task) -> ModelResponse:
         """Generate the high level design or subtasks for ``task``."""
         prompt = HLDDesigner.PROMPT_TEMPLATE.format(
-            requirements=task.description,
-            complexity=task.complexity,
+            requirements=data.description,
+            complexity=data.complexity,
         )
         response: ModelResponse = self.llm_accessor.call_model(prompt, HLDDesigner.SCHEMA)
         return response

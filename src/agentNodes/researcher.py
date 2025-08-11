@@ -26,9 +26,9 @@ class Researcher(AgentNode):
             tools=task.tools,
         )
 
-    def execute_task(self, task: Task) -> ModelResponse:
+    def execute_task(self, data: Task) -> ModelResponse:
         """Perform research for ``task`` using web search."""
-        task.tools = [WEB_SEARCH_TOOL]
-        result: ModelResponse = self.run_llm_agent(task)
+        data.tools = [WEB_SEARCH_TOOL]
+        result: ModelResponse = self.run_llm_agent(data)
         return result
 

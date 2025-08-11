@@ -1,7 +1,7 @@
 from pydantic import TypeAdapter
 
-from agentNodes.reviewer import Reviewer
-from dataModel.model_response import (
+from src.agentNodes.reviewer import Reviewer
+from src.dataModel.model_response import (
     ImplementedResponse,
     FailedResponse,
 )

@@ -21,8 +21,8 @@ class Implementer(AgentNode):
         """Create the implementer with the given accessor."""
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, task: Task) -> ModelResponse:
+    def execute_task(self, data: Task) -> ModelResponse:
         """Generate code for ``task`` using the LLM accessor."""
-        prompt = Implementer.PROMPT_TEMPLATE.format(description=task.description)
+        prompt = Implementer.PROMPT_TEMPLATE.format(description=data.description)
         response: ModelResponse = self.llm_accessor.call_model(prompt, Implementer.SCHEMA)
         return response

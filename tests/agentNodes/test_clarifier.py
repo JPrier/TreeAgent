@@ -1,7 +1,7 @@
-from agentNodes.clarifier import Clarifier
-from modelAccessors.base_accessor import BaseModelAccessor
-from dataModel.task import Task, TaskType
-from dataModel.model_response import (
+from src.agentNodes.clarifier import Clarifier
+from src.modelAccessors.base_accessor import BaseModelAccessor
+from src.dataModel.task import Task, TaskType
+from src.dataModel.model_response import (
     FollowUpResponse,
     ImplementedResponse,
 )
