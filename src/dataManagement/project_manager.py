@@ -16,7 +16,8 @@ def save_project_state(project: Project, directory: str | Path) -> Path:
     """
     dir_path = Path(directory)
     dir_path.mkdir(parents=True, exist_ok=True)
-    now = datetime.now()
+
+    now = datetime.utcnow()
     # 14 digits for seconds + 3 digits for milliseconds
     timestamp = now.strftime("%Y%m%d%H%M%S") + f"{now.microsecond // 1000:03d}"
     unique_id = uuid.uuid4().hex

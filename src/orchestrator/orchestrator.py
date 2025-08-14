@@ -61,10 +61,12 @@ class AgentOrchestrator:
         *,
         verbose: bool = False,
         logger: logging.Logger | None = None,
+        default_accessor_type: AccessorType | None = None,
     ) -> None:
         """Load spawn rules and prepare orchestrator."""
         self.verbose = verbose
         self.logger = logger or init_logger(self.__class__.__name__, verbose)
+        self.default_accessor_type = default_accessor_type
 
         cfg_path: Path | None
         if config_path:
@@ -107,6 +109,11 @@ class AgentOrchestrator:
             spawned_count[sub.type.name] = spawned_count.get(sub.type.name, 0) + 1
             if spawned_count[sub.type.name] > limit:
                 continue
+            if (
+                self.default_accessor_type
+                and sub.model.accessor_type == AccessorType.MOCK
+            ):
+                sub.model = Model(accessor_type=self.default_accessor_type)
             sub.parent_id = parent.id
             sub.status = TaskStatus.PENDING
             out.append(sub)
@@ -154,7 +161,7 @@ class AgentOrchestrator:
 
     def _run_loop(self, project: Project, checkpoint_dir: Path) -> Project:
         """Execute tasks sequentially until the queue is empty."""
-        adapter = TypeAdapter(ModelResponse)
+        adapter: TypeAdapter[ModelResponse] = TypeAdapter(ModelResponse)
 
         while project.queuedTasks:
             current_task = project.queuedTasks.pop(0)
@@ -221,6 +228,9 @@ class AgentOrchestrator:
                             id=f"{current_task.id}-hld",
                             description=current_task.description,
                             type=TaskType.HLD,
+                            model=Model(accessor_type=self.default_accessor_type)
+                            if self.default_accessor_type
+                            else Model(),
                         )
                         new_tasks = self._enqueue_subtasks(current_task, [hld])
                         project.queuedTasks.extend(new_tasks)
@@ -242,6 +252,9 @@ class AgentOrchestrator:
                             id=f"{current_task.id}-hld",
                             description=desc,
                             type=TaskType.HLD,
+                            model=Model(accessor_type=self.default_accessor_type)
+                            if self.default_accessor_type
+                            else Model(),
                         )
                         new_tasks = self._enqueue_subtasks(current_task, [hld])
                         project.queuedTasks.extend(new_tasks)
@@ -277,7 +290,9 @@ class AgentOrchestrator:
             id="root-task",
             type=TaskType.REQUIREMENTS,
             description=project_prompt,
-            model=Model(),  # Use default model
+            model=Model(accessor_type=self.default_accessor_type)
+            if self.default_accessor_type
+            else Model(),
         )
 
 if __name__ == "__main__":

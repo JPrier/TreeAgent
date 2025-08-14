@@ -86,6 +86,7 @@ cd TreeAgent
 python3.11 -m venv .venv && source .venv/bin/activate
 pip install -e .                  # install package and CLI
 treeagent "hello world"           # prints skeleton task tree
+treeagent --model-type openai "hello"  # use OpenAI accessor by default
 ```
 
 > Heads-up: you’ll need an OpenAI (or other) API key in your shell once the first agent stubs call an LLM.
