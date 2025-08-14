@@ -1,0 +1,36 @@
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+    - id: install-deps-pyproject
+      name: Install dependencies
+      language: system
+      entry: python
+      args: ["-m", "pip", "install", "-e", ".[dev]"]
+      pass_filenames: false
+      stages: [pre-commit]
+  # Ruff (lint)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.6.5
+    hooks:
+      - id: ruff
+        args: ["src", "tests"]
+        pass_filenames: false
+
+  # mypy (type checks)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.11.1
+    hooks:
+      - id: mypy
+        args: ["--install-types", "--non-interactive", "--ignore-missing-imports", "src", "tests"]
+        pass_filenames: false
+
+  # Run pytest on push (heavy; keep off pre-commit to stay fast)
+  - repo: local
+    hooks:
+      - id: pytest
+        name: pytest
+        language: system
+        entry: python
+        args: ["-m", "pytest", "-q"]
+        pass_filenames: false
