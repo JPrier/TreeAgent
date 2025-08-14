@@ -20,6 +20,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest-cov>=5.0",
+    "pre-commit>=3.0",
 ]
 
 [project.scripts]
