@@ -161,7 +161,7 @@ class AgentOrchestrator:
 
     def _run_loop(self, project: Project, checkpoint_dir: Path) -> Project:
         """Execute tasks sequentially until the queue is empty."""
-        adapter = TypeAdapter(ModelResponse)
+        adapter: TypeAdapter[ModelResponse] = TypeAdapter(ModelResponse)
 
         while project.queuedTasks:
             current_task = project.queuedTasks.pop(0)

@@ -17,6 +17,7 @@ class Reviewer(AgentNode):
         """Approve implementations that contain a ``def`` statement."""
         last = data["last_response"]
         content = last.content or ""
+        resp: ModelResponse
         if "def" in content:
             resp = ImplementedResponse(content="LGTM", artifacts=last.artifacts)
         else:
