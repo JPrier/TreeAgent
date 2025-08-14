@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 
 from .orchestrator import AgentOrchestrator
+from .dataModel.model import AccessorType
 
 
 def parse_args() -> argparse.Namespace:
@@ -26,6 +27,11 @@ def parse_args() -> argparse.Namespace:
         default="checkpoints",
         help="Directory to store project checkpoints",
     )
+    parser.add_argument(
+        "--model-type",
+        choices=[t.value for t in AccessorType],
+        help="Default model accessor to use for tasks",
+    )
     return parser.parse_args()
 
 
@@ -33,7 +39,10 @@ def main() -> None:
     """Entry point for the TreeAgent CLI."""
     args = parse_args()
 
-    orchestrator = AgentOrchestrator()
+    default_accessor = (
+        AccessorType(args.model_type) if args.model_type else None
+    )
+    orchestrator = AgentOrchestrator(default_accessor_type=default_accessor)
     if args.resume:
         project = orchestrator.resume_project(args.resume)
     elif args.prompt:
