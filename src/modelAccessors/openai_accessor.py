@@ -1,7 +1,7 @@
 from os import environ
 from typing import Optional
 from openai import OpenAI
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from .base_accessor import BaseModelAccessor, Tool
 from src.dataModel.model_response import ModelResponse
 
@@ -11,9 +11,15 @@ class OpenAIAccessor(BaseModelAccessor):
         # Models that support function calling/tools
         self.tool_supported_models = ["gpt-4", "gpt-4-turbo", "gpt-4o", "gpt-3.5-turbo-0125", "gpt-3.5-turbo"]
 
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:
+    def prompt_model(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        schema: type[BaseModel],
+    ) -> ModelResponse:
         """
-        Sends a prompt to the specified OpenAI model and returns the response.
+        Sends a prompt to the specified OpenAI model and returns the validated response.
         """
         response = self.client.chat.completions.create(
             model=model,
@@ -21,35 +27,36 @@ class OpenAIAccessor(BaseModelAccessor):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            response_format={"type": "json_object"}
+            response_format=schema,
         )
-        
+
         content: str | None = response.choices[0].message.content
         if not content:
             raise ValueError("No content in response")
-            
-        return TypeAdapter(ModelResponse).validate_json(content) # type: ignore
 
-    def call_model(self, prompt: str, schema) -> ModelResponse:  # pragma: no cover - thin wrapper
+        return TypeAdapter(schema).validate_json(content)
+
+    def call_model(self, prompt: str, schema: type[BaseModel]) -> ModelResponse:  # pragma: no cover - thin wrapper
         """Convenience wrapper used by simple agent nodes."""
-        return self.prompt_model("gpt-4", "", prompt)
+        return self.prompt_model("gpt-4", "", prompt, schema)
 
     def execute_task_with_tools(
         self,
         model: str,
         system_prompt: str,
         user_prompt: str,
+        schema: type[BaseModel],
         tools: Optional[list[Tool]] = None,
     ) -> ModelResponse:
         """
         Execute task with tools - using native function calling if supported
         """
         if not tools or not self.supports_tools(model):
-            return self.prompt_model(model, system_prompt, user_prompt)
-        
+            return self.prompt_model(model, system_prompt, user_prompt, schema)
+
         # Use native OpenAI function calling
         openai_tools = self._convert_to_openai_tools(tools)
-        
+
         response = self.client.chat.completions.create(
             model=model,
             messages=[
@@ -57,14 +64,14 @@ class OpenAIAccessor(BaseModelAccessor):
                 {"role": "user", "content": user_prompt},
             ],
             tools=openai_tools,
-            response_format={"type": "json_object"}
+            response_format=schema,
         )
-        
+
         content = response.choices[0].message.content
         if not content:
             raise ValueError("No content in response")
-            
-        return TypeAdapter(ModelResponse).validate_json(content)
+
+        return TypeAdapter(schema).validate_json(content)
     
     def supports_tools(self, model: str) -> bool:
         """Check if model supports native tools/function calling"""

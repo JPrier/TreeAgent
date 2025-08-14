@@ -182,6 +182,7 @@ def test_resume_from_checkpoint(monkeypatch, tmp_path):
         TaskType.IMPLEMENT: lambda acc: impl_factory(),
     }
     monkeypatch.setattr(orchestrator, "NODE_FACTORY", node_map, raising=False)
+    monkeypatch.setattr(orchestrator.orchestrator, "NODE_FACTORY", node_map, raising=False)
     monkeypatch.setattr(
         orchestrator.AgentOrchestrator,
         "_get_accessor",
