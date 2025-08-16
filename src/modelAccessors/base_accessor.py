@@ -5,7 +5,13 @@ from .data.tool import Tool
 
 class BaseModelAccessor(ABC):
     @abstractmethod
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> Any:
+    def prompt_model(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        schema,
+    ) -> Any:
         """Basic text prompting with no tools"""
         pass
 
@@ -20,6 +26,7 @@ class BaseModelAccessor(ABC):
         model: str,
         system_prompt: str,
         user_prompt: str,
+        schema,
         tools: Optional[list[Tool]] = None,
     ) -> Any:
         """
