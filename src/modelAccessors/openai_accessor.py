@@ -1,5 +1,5 @@
 from os import environ
-from typing import Optional
+from typing import Any, Optional
 from openai import OpenAI
 from pydantic import BaseModel, TypeAdapter
 from .base_accessor import BaseModelAccessor, Tool
@@ -27,6 +27,7 @@ class OpenAIAccessor(BaseModelAccessor):
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
+            # Pydantic schema enforces model-validated responses via OpenAI's JSON schema mode
             response_format=schema,
         )
 
@@ -77,9 +78,9 @@ class OpenAIAccessor(BaseModelAccessor):
         """Check if model supports native tools/function calling"""
         return model in self.tool_supported_models
         
-    def _convert_to_openai_tools(self, tools: list[Tool]) -> list[dict[str, object]]:
+    def _convert_to_openai_tools(self, tools: list[Tool]) -> list[dict[str, Any]]:
         """Convert our Tool objects to OpenAI's tool format"""
-        openai_tools: list[dict[str, object]] = []
+        openai_tools: list[dict[str, Any]] = []
         for tool in tools:
             openai_tools.append({
                 "type": "function",
