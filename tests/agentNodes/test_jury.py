@@ -5,14 +5,14 @@ from src.modelAccessors.base_accessor import BaseModelAccessor
 
 
 class _StubAccessor(BaseModelAccessor):
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
+    def prompt_model(self, model: str, system_prompt: str, user_prompt: str, schema):
         raise NotImplementedError()
 
     def call_model(self, prompt: str, schema):  # pragma: no cover - unused
         raise NotImplementedError()
 
     def execute_task_with_tools(
-        self, model: str, system_prompt: str, user_prompt: str, tools=None
+        self, model: str, system_prompt: str, user_prompt: str, schema, tools=None
     ):  # pragma: no cover - unused
         raise NotImplementedError()
 

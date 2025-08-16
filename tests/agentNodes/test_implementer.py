@@ -11,10 +11,12 @@ class _StubAccessor(BaseModelAccessor):
     def call_model(self, prompt: str, schema):
         return self._result
 
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):  # pragma: no cover - unused
+    def prompt_model(self, model: str, system_prompt: str, user_prompt: str, schema):  # pragma: no cover - unused
         raise NotImplementedError()
 
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):  # pragma: no cover - unused
+    def execute_task_with_tools(
+        self, model: str, system_prompt: str, user_prompt: str, schema, tools=None
+    ):  # pragma: no cover - unused
         raise NotImplementedError()
 
 

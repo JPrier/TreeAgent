@@ -16,12 +16,12 @@ import json
 
 def _patch_accessor(accessor: MockAccessor, *, call_model=None, exec_tools=None) -> MockAccessor:
     if call_model:
-        def patched_prompt(model: str, system_prompt: str, user_prompt: str):
-            return call_model(user_prompt, None)
+        def patched_prompt(model: str, system_prompt: str, user_prompt: str, schema):
+            return call_model(user_prompt, schema)
         accessor.prompt_model = patched_prompt  # type: ignore
     if exec_tools:
-        def patched_exec(model: str, system_prompt: str, user_prompt: str, tools=None):
-            return exec_tools(model, system_prompt, user_prompt, tools)
+        def patched_exec(model: str, system_prompt: str, user_prompt: str, schema, tools=None):
+            return exec_tools(model, system_prompt, user_prompt, schema, tools)
         accessor.execute_task_with_tools = patched_exec  # type: ignore
     return accessor
 
@@ -37,7 +37,7 @@ def _hld_call_model(prompt: str, schema):
     return DecomposedResponse(subtasks=subtasks)
 
 
-def _research_exec(model: str, system_prompt: str, user_prompt: str, tools=None):
+def _research_exec(model: str, system_prompt: str, user_prompt: str, schema, tools=None):
     return ImplementedResponse(artifacts=["https://example.com"])
 
 

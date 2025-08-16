@@ -1,6 +1,6 @@
 from os import environ
 from typing import Any, Optional, Dict
-from pydantic import TypeAdapter
+from pydantic import BaseModel, TypeAdapter
 from anthropic import Anthropic
 from .base_accessor import BaseModelAccessor, Tool
 from src.dataModel.model_response import ModelResponse
@@ -11,62 +11,65 @@ class AnthropicAccessor(BaseModelAccessor):
         # Models with tool support
         self.tool_supported_models = ["claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-3-5-sonnet-20240620"]
         
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:
+    def prompt_model(
+        self,
+        model: str,
+        system_prompt: str,
+        user_prompt: str,
+        schema: type[BaseModel],
+    ) -> ModelResponse:
         """Basic text prompting for Claude models"""
         response = self.client.messages.create(
             model=model,
             max_tokens=4096,
             system=system_prompt,
-            messages=[
-                {"role": "user", "content": user_prompt}
-            ]
+            messages=[{"role": "user", "content": user_prompt}],
         )
-        
+
         content = response.content[0].text
         if not content:
             raise ValueError("No content in response")
-            
-        return TypeAdapter(ModelResponse).validate_json(content)
 
-    def call_model(self, prompt: str, schema) -> ModelResponse:  # pragma: no cover - thin wrapper
+        return TypeAdapter(schema).validate_json(content)
+
+    def call_model(self, prompt: str, schema: type[BaseModel]) -> ModelResponse:  # pragma: no cover - thin wrapper
         """Convenience wrapper used by simple agent nodes."""
-        return self.prompt_model("claude-3-opus-20240229", "", prompt)
-        
+        return self.prompt_model("claude-3-opus-20240229", "", prompt, schema)
+
     def execute_task_with_tools(
         self,
         model: str,
         system_prompt: str,
         user_prompt: str,
+        schema: type[BaseModel],
         tools: Optional[list[Tool]] = None,
     ) -> ModelResponse:
         """Execute task with tools - native tools if supported"""
         if not tools:
-            return self.prompt_model(model, system_prompt, user_prompt)
-            
+            return self.prompt_model(model, system_prompt, user_prompt, schema)
+
         if self.supports_tools(model):
             # Use Claude's native tool use
             claude_tools = self._convert_to_claude_tools(tools)
-            
+
             response = self.client.messages.create(
                 model=model,
                 max_tokens=4096,
                 system=system_prompt,
-                messages=[
-                    {"role": "user", "content": user_prompt}
-                ],
-                tools=claude_tools
+                messages=[{"role": "user", "content": user_prompt}],
+                tools=claude_tools,
             )
-            
+
             content = response.content[0].text
             if not content:
                 raise ValueError("No content in response")
-                
-            return TypeAdapter(ModelResponse).validate_json(content)
+
+            return TypeAdapter(schema).validate_json(content)
         else:
             # Fallback for models without tool support
             tools_description = self._format_tools_for_prompt(tools)
             enhanced_system_prompt = f"{system_prompt}\n\nAvailable tools:\n{tools_description}"
-            return self.prompt_model(model, enhanced_system_prompt, user_prompt)
+            return self.prompt_model(model, enhanced_system_prompt, user_prompt, schema)
     
     def supports_tools(self, model: str) -> bool:
         """Check if model supports native tool use"""

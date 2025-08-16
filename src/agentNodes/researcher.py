@@ -23,6 +23,7 @@ class Researcher(AgentNode):
             model="researcher",
             system_prompt="You are a research assistant.",
             user_prompt=prompt,
+            schema=Researcher.SCHEMA,
             tools=task.tools,
         )
 
