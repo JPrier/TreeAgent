@@ -11,10 +11,12 @@ class _StubAccessor(BaseModelAccessor):
     def call_model(self, prompt: str, schema):
         raise NotImplementedError()
 
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
+    def prompt_model(self, model: str, system_prompt: str, user_prompt: str, schema):
         raise NotImplementedError()
 
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):
+    def execute_task_with_tools(
+        self, model: str, system_prompt: str, user_prompt: str, schema, tools=None
+    ):
         raise NotImplementedError()
 
 
