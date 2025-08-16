@@ -1,7 +1,7 @@
 from os import environ
-from typing import Any, Optional
+from typing import Any, Optional, cast
 from openai import OpenAI
-from pydantic import BaseModel, TypeAdapter
+from pydantic import BaseModel
 from .base_accessor import BaseModelAccessor, Tool
 from src.dataModel.model_response import ModelResponse
 
@@ -21,21 +21,20 @@ class OpenAIAccessor(BaseModelAccessor):
         """
         Sends a prompt to the specified OpenAI model and returns the validated response.
         """
-        response = self.client.chat.completions.create(
+        response = self.client.chat.completions.parse(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            # Share schema directly to enforce model-validated responses
-            response_format={"type": "json_schema", "json_schema": schema.model_json_schema()},
+            response_format=schema,
         )
 
-        content: str | None = response.choices[0].message.content
-        if not content:
+        content = response.choices[0].message.parsed
+        if content is None:
             raise ValueError("No content in response")
 
-        return TypeAdapter(schema).validate_json(content)
+        return cast(ModelResponse, content)
 
     def call_model(self, prompt: str, schema: type[BaseModel]) -> ModelResponse:  # pragma: no cover - thin wrapper
         """Convenience wrapper used by simple agent nodes."""
@@ -58,21 +57,21 @@ class OpenAIAccessor(BaseModelAccessor):
         # Use native OpenAI function calling
         openai_tools = self._convert_to_openai_tools(tools)
 
-        response = self.client.chat.completions.create(
+        response = self.client.chat.completions.parse(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
             tools=openai_tools,
-            response_format={"type": "json_schema", "json_schema": schema.model_json_schema()},
+            response_format=schema,
         )
 
-        content = response.choices[0].message.content
-        if not content:
+        content = response.choices[0].message.parsed
+        if content is None:
             raise ValueError("No content in response")
 
-        return TypeAdapter(schema).validate_json(content)
+        return cast(ModelResponse, content)
     
     def supports_tools(self, model: str) -> bool:
         """Check if model supports native tools/function calling"""
