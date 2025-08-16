@@ -1,5 +1,5 @@
 from .base_accessor import BaseModelAccessor, Tool
-from typing import Optional
+from typing import Optional, cast
 from pydantic import BaseModel, TypeAdapter
 from src.dataModel.model_response import (
     ModelResponse,
@@ -30,7 +30,8 @@ class MockAccessor(BaseModelAccessor):
     ) -> ModelResponse:
         _ = user_prompt  # prompt content not used for mock responses
         response = self._build_response(schema)
-        return TypeAdapter(schema).validate_python(response.model_dump())
+        validated = TypeAdapter(schema).validate_python(response.model_dump())
+        return cast(ModelResponse, validated)
     
     def execute_task_with_tools(
         self,
@@ -53,7 +54,8 @@ class MockAccessor(BaseModelAccessor):
             else:
                 response.content = "Mock task with tools completed"
 
-        return TypeAdapter(schema).validate_python(response.model_dump())
+        validated = TypeAdapter(schema).validate_python(response.model_dump())
+        return cast(ModelResponse, validated)
     
     def supports_tools(self, model: str) -> bool:
         """Mock tool support for certain models"""

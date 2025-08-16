@@ -1,5 +1,5 @@
 from os import environ
-from typing import Any, Optional, Dict
+from typing import Any, Optional
 from openai import OpenAI
 from pydantic import BaseModel, TypeAdapter
 from .base_accessor import BaseModelAccessor, Tool
@@ -21,22 +21,14 @@ class OpenAIAccessor(BaseModelAccessor):
         """
         Sends a prompt to the specified OpenAI model and returns the validated response.
         """
-        openai_schema: Dict[str, Any] = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": schema.__name__,
-                "schema": schema.model_json_schema(),
-            },
-        }
-
         response = self.client.chat.completions.create(
             model=model,
             messages=[
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_prompt},
             ],
-            # Pydantic schema enforces model-validated responses via OpenAI's JSON schema mode
-            response_format=openai_schema,
+            # Share schema directly to enforce model-validated responses
+            response_format={"type": "json_schema", "json_schema": schema.model_json_schema()},
         )
 
         content: str | None = response.choices[0].message.content
@@ -66,14 +58,6 @@ class OpenAIAccessor(BaseModelAccessor):
         # Use native OpenAI function calling
         openai_tools = self._convert_to_openai_tools(tools)
 
-        openai_schema: Dict[str, Any] = {
-            "type": "json_schema",
-            "json_schema": {
-                "name": schema.__name__,
-                "schema": schema.model_json_schema(),
-            },
-        }
-
         response = self.client.chat.completions.create(
             model=model,
             messages=[
@@ -81,7 +65,7 @@ class OpenAIAccessor(BaseModelAccessor):
                 {"role": "user", "content": user_prompt},
             ],
             tools=openai_tools,
-            response_format=openai_schema,
+            response_format={"type": "json_schema", "json_schema": schema.model_json_schema()},
         )
 
         content = response.choices[0].message.content
