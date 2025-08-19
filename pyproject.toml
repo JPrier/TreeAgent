@@ -25,7 +25,7 @@ dev = [
 
 [project.scripts]
 treeagent = "src.cli:main"
-treeagent-swebench = "treeagent.bench.swebench_cli:main"
+treeagent-swebench = "src.cli.bench.swebench_cli:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src"]
