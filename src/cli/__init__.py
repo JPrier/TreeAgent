@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 
-from .orchestrator import AgentOrchestrator
-from .dataModel.model import AccessorType
+from ..orchestrator import AgentOrchestrator
+from ..dataModel.model import AccessorType
 
 
 def parse_args() -> argparse.Namespace:
