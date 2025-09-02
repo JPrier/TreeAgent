@@ -38,7 +38,11 @@ class OpenAIAccessor(BaseModelAccessor):
         if tools and self.supports_tools(model):
             kwargs["tools"] = self._convert_to_openai_tools(tools)
         response = self.client.chat.completions.create(**kwargs)
-        raw = response.choices[0].message.content[0].text
+        message = response.choices[0].message
+        parsed = getattr(message, "parsed", None)
+        if parsed is not None:
+            return adapter.validate_python(parsed)
+        raw = message.content
         return adapter.validate_json(raw)
     
     def supports_tools(self, model: str) -> bool:
