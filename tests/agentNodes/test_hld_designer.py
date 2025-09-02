@@ -1,8 +1,11 @@
 from agentNodes.hld_designer import HLDDesigner
+from pydantic import TypeAdapter
+
 from dataModel.task import Task, TaskType
 from dataModel.model_response import (
     DecomposedResponse,
     ImplementedResponse,
+    DesignerResponse,
 )
 from modelAccessors.base_accessor import BaseModelAccessor
 
@@ -11,14 +14,17 @@ class _StubAccessor(BaseModelAccessor):
     def __init__(self, result):
         self._result = result
 
-    def call_model(self, prompt: str, schema):
+    def call_model(
+        self,
+        prompt: str,
+        *,
+        adapter: TypeAdapter[DesignerResponse],
+        schema: dict,
+        model: str = "gpt-4",
+        system_prompt: str = "",
+        tools=None,
+    ) -> DesignerResponse:
         return self._result
-
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
-        raise NotImplementedError()
-
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):
-        raise NotImplementedError()
 
 
 def test_decomposes_when_complex():

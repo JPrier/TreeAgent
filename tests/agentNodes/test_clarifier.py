@@ -1,20 +1,26 @@
+from pydantic import TypeAdapter
+
 from src.agentNodes.clarifier import Clarifier
 from src.modelAccessors.base_accessor import BaseModelAccessor
 from src.dataModel.task import Task, TaskType
 from src.dataModel.model_response import (
     FollowUpResponse,
     ImplementedResponse,
+    ClarifierResponse,
 )
 
 
 class _StubAccessor(BaseModelAccessor):
-    def call_model(self, prompt: str, schema):
-        raise NotImplementedError()
-
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
-        raise NotImplementedError()
-
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):
+    def call_model(
+        self,
+        prompt: str,
+        *,
+        adapter: TypeAdapter[ClarifierResponse],
+        schema: dict,
+        model: str = "gpt-4",
+        system_prompt: str = "",
+        tools=None,
+    ) -> ClarifierResponse:
         raise NotImplementedError()
 
 
@@ -25,7 +31,7 @@ def test_needs_followup(monkeypatch):
     monkeypatch.setattr(
         node.llm_accessor,
         "call_model",
-        lambda prompt, schema: FollowUpResponse(follow_up_ask=follow_up),
+        lambda prompt, *, adapter, schema, **kwargs: FollowUpResponse(follow_up_ask=follow_up),
     )
     task = Task(id="t1", description="Build app?", type=TaskType.REQUIREMENTS)
 
@@ -41,7 +47,7 @@ def test_no_followup(monkeypatch):
     monkeypatch.setattr(
         node.llm_accessor,
         "call_model",
-        lambda prompt, schema: ImplementedResponse(content="Requirements are clear"),
+        lambda prompt, *, adapter, schema, **kwargs: ImplementedResponse(content="Requirements are clear"),
     )
     task = Task(id="t2", description="All good", type=TaskType.REQUIREMENTS)
 

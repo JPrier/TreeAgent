@@ -1,12 +1,10 @@
+from pydantic import TypeAdapter
+
 from src.agentNodes.base_node import AgentNode
 from src.modelAccessors.base_accessor import BaseModelAccessor
 
 from src.dataModel.task import Task
-from src.dataModel.model_response import (
-    ModelResponse,
-    DecomposedResponse,
-    ImplementedResponse,
-)
+from src.dataModel.model_response import DesignerResponse
 
 
 class HLDDesigner(AgentNode):
@@ -19,18 +17,22 @@ class HLDDesigner(AgentNode):
         "Provide at most 5 subtasks using only the types: LLD, RESEARCH, TEST."
     )
 
-    SCHEMA = DecomposedResponse | ImplementedResponse
+    ADAPTER = TypeAdapter(DesignerResponse)
+    SCHEMA = ADAPTER.json_schema()
 
     def __init__(self, llm_accessor: BaseModelAccessor):
         """Create the designer with the given model accessor."""
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, data: Task) -> ModelResponse:
+    def execute_task(self, data: Task) -> DesignerResponse:
         """Generate the high level design or subtasks for ``task``."""
         prompt = HLDDesigner.PROMPT_TEMPLATE.format(
             requirements=data.description,
             complexity=data.complexity,
         )
-        response: ModelResponse = self.llm_accessor.call_model(prompt, HLDDesigner.SCHEMA)
-        return response
+        return self.llm_accessor.call_model(
+            prompt,
+            adapter=HLDDesigner.ADAPTER,
+            schema=HLDDesigner.SCHEMA,
+        )
 

@@ -11,14 +11,17 @@ class _StubAccessor(BaseModelAccessor):
     def __init__(self, result: ImplementedResponse | None = None):
         self._result = result or ImplementedResponse(content="x" * 25)
 
-    def call_model(self, prompt: str, schema):
+    def call_model(
+        self,
+        prompt: str,
+        *,
+        adapter: TypeAdapter[ImplementedResponse],
+        schema: dict,
+        model: str = "gpt-4",
+        system_prompt: str = "",
+        tools=None,
+    ) -> ImplementedResponse:
         return self._result
-
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):
-        raise NotImplementedError()
-
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):
-        raise NotImplementedError()
 
 
 def test_lld_returns_content():
@@ -34,8 +37,12 @@ def test_lld_returns_content():
 def test_schema_enforced(monkeypatch):
     accessor = _StubAccessor()
     node = LLDDesigner(accessor)
-    monkeypatch.setattr(node.llm_accessor, "call_model", lambda prompt, schema: object())
+    monkeypatch.setattr(
+        node.llm_accessor,
+        "call_model",
+        lambda prompt, *, adapter, schema, **kwargs: object(),
+    )
     task = Task(id="l2", description="Bad", type=TaskType.LLD)
 
     with pytest.raises(ValidationError):
-        TypeAdapter(LLDDesigner.SCHEMA).validate_python(node.execute_task(task))
+        LLDDesigner.ADAPTER.validate_python(node.execute_task(task))

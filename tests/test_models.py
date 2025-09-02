@@ -55,7 +55,7 @@ def test_model_response_round_trip_and_discriminator(cls, kwargs, tag):
     packed = orig.model_dump()
     restored = cls.model_validate(packed)
     assert restored == orig
-    assert packed["response_type"] == tag
+    assert packed["type"] == tag
 
 
 def test_task_allows_tools():
