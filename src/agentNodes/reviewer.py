@@ -13,7 +13,7 @@ from src.dataModel.model_response import (
 class Reviewer(AgentNode):
     """Reviews implemented code and either approves or rejects."""
 
-    ADAPTER = TypeAdapter(TesterResponse)
+    ADAPTER: TypeAdapter[TesterResponse] = TypeAdapter(TesterResponse)
     SCHEMA = ADAPTER.json_schema()
 
     def execute_task(self, data: dict[str, Any]) -> TesterResponse:

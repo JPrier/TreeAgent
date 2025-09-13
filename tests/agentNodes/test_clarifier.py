@@ -6,7 +6,7 @@ from src.dataModel.task import Task, TaskType
 from src.dataModel.model_response import (
     FollowUpResponse,
     ImplementedResponse,
-    ClarifierResponse,
+    ModelResponse,
 )
 
 
@@ -15,12 +15,12 @@ class _StubAccessor(BaseModelAccessor):
         self,
         prompt: str,
         *,
-        adapter: TypeAdapter[ClarifierResponse],
+        adapter: TypeAdapter[ModelResponse],
         schema: dict,
         model: str = "gpt-4",
         system_prompt: str = "",
         tools=None,
-    ) -> ClarifierResponse:
+    ) -> ModelResponse:
         raise NotImplementedError()
 
 

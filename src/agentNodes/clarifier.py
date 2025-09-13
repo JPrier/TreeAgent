@@ -1,10 +1,12 @@
+from typing import cast
+
 from pydantic import TypeAdapter
 
 from src.agentNodes.base_node import AgentNode
 from src.modelAccessors.base_accessor import BaseModelAccessor
 
 from src.dataModel.task import Task
-from src.dataModel.model_response import ClarifierResponse
+from src.dataModel.model_response import ClarifierResponse, ModelResponse
 
 
 class Clarifier(AgentNode):
@@ -17,7 +19,9 @@ class Clarifier(AgentNode):
         " question to ask.\nTask: {task}"
     )
 
-    ADAPTER = TypeAdapter(ClarifierResponse)
+    ADAPTER: TypeAdapter[ModelResponse] = cast(
+        TypeAdapter[ModelResponse], TypeAdapter(ClarifierResponse)
+    )
     SCHEMA = ADAPTER.json_schema()
 
     def __init__(self, llm_accessor: BaseModelAccessor):
@@ -32,9 +36,10 @@ class Clarifier(AgentNode):
 
     def execute_task(self, data: Task) -> ClarifierResponse:
         """Ask the LLM whether the requirements need clarification."""
-        return self.llm_accessor.call_model(
+        resp = self.llm_accessor.call_model(
             prompt=Clarifier.PROMPT_TEMPLATE.format(task=data.description),
             adapter=Clarifier.ADAPTER,
             schema=Clarifier.SCHEMA,
         )
+        return cast(ClarifierResponse, resp)
 

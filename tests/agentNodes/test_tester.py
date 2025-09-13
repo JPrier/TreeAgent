@@ -2,7 +2,10 @@ from pydantic import TypeAdapter
 
 from src.agentNodes.tester import Tester
 from src.modelAccessors.base_accessor import BaseModelAccessor
-from src.dataModel.model_response import ImplementedResponse, TesterResponse
+from src.dataModel.model_response import (
+    ImplementedResponse,
+    ModelResponse,
+)
 from src.dataModel.task import Task, TaskType
 
 
@@ -14,12 +17,12 @@ class _StubAccessor(BaseModelAccessor):
         self,
         prompt: str,
         *,
-        adapter: TypeAdapter[TesterResponse],
+        adapter: TypeAdapter[ModelResponse],
         schema: dict,
         model: str = "gpt-4",
         system_prompt: str = "",
         tools=None,
-    ) -> TesterResponse:
+    ) -> ModelResponse:
         return self._result
 
 

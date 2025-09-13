@@ -1,10 +1,12 @@
+from typing import cast
+
 from pydantic import TypeAdapter
 
 from src.agentNodes.base_node import AgentNode
 from src.modelAccessors.base_accessor import BaseModelAccessor
 
 from src.dataModel.task import Task
-from src.dataModel.model_response import DesignerResponse
+from src.dataModel.model_response import DesignerResponse, ModelResponse
 
 
 class HLDDesigner(AgentNode):
@@ -17,7 +19,9 @@ class HLDDesigner(AgentNode):
         "Provide at most 5 subtasks using only the types: LLD, RESEARCH, TEST."
     )
 
-    ADAPTER = TypeAdapter(DesignerResponse)
+    ADAPTER: TypeAdapter[ModelResponse] = cast(
+        TypeAdapter[ModelResponse], TypeAdapter(DesignerResponse)
+    )
     SCHEMA = ADAPTER.json_schema()
 
     def __init__(self, llm_accessor: BaseModelAccessor):
@@ -30,9 +34,10 @@ class HLDDesigner(AgentNode):
             requirements=data.description,
             complexity=data.complexity,
         )
-        return self.llm_accessor.call_model(
+        resp = self.llm_accessor.call_model(
             prompt,
             adapter=HLDDesigner.ADAPTER,
             schema=HLDDesigner.SCHEMA,
         )
+        return cast(DesignerResponse, resp)
 

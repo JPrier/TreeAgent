@@ -1,10 +1,12 @@
+from typing import cast
+
 from pydantic import TypeAdapter
 
 from src.agentNodes.base_node import AgentNode
 from src.modelAccessors.base_accessor import BaseModelAccessor
 from src.dataModel.task import Task
 
-from src.dataModel.model_response import ImplementedResponse
+from src.dataModel.model_response import ImplementedResponse, ModelResponse
 
 
 class Implementer(AgentNode):
@@ -17,7 +19,9 @@ class Implementer(AgentNode):
         "summarising the implementation and listing any file names."
     )
 
-    ADAPTER = TypeAdapter(ImplementedResponse)
+    ADAPTER: TypeAdapter[ModelResponse] = cast(
+        TypeAdapter[ModelResponse], TypeAdapter(ImplementedResponse)
+    )
     SCHEMA = ADAPTER.json_schema()
 
     def __init__(self, llm_accessor: BaseModelAccessor) -> None:
@@ -27,8 +31,9 @@ class Implementer(AgentNode):
     def execute_task(self, data: Task) -> ImplementedResponse:
         """Generate code for ``task`` using the LLM accessor."""
         prompt = Implementer.PROMPT_TEMPLATE.format(description=data.description)
-        return self.llm_accessor.call_model(
+        resp = self.llm_accessor.call_model(
             prompt,
             adapter=Implementer.ADAPTER,
             schema=Implementer.SCHEMA,
         )
+        return cast(ImplementedResponse, resp)
