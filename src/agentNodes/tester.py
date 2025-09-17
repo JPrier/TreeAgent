@@ -1,8 +1,12 @@
+from typing import cast
+
+from pydantic import TypeAdapter
+
 from src.agentNodes.base_node import AgentNode
 from src.modelAccessors.base_accessor import BaseModelAccessor
 from src.dataModel.task import Task
 
-from src.dataModel.model_response import ModelResponse, ImplementedResponse, FailedResponse
+from src.dataModel.model_response import ModelResponse, TesterResponse
 
 
 class Tester(AgentNode):
@@ -14,14 +18,21 @@ class Tester(AgentNode):
         "Respond with JSON matching the ImplementedResponse schema."
     )
 
-    SCHEMA = ImplementedResponse | FailedResponse
+    ADAPTER: TypeAdapter[ModelResponse] = cast(
+        TypeAdapter[ModelResponse], TypeAdapter(TesterResponse)
+    )
+    SCHEMA = ADAPTER.json_schema()
 
     def __init__(self, llm_accessor: BaseModelAccessor) -> None:
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, data: Task | None = None) -> ModelResponse:
+    def execute_task(self, data: Task | None = None) -> TesterResponse:
         """Return test results for ``task`` using the LLM accessor."""
         desc = data.description if data else ""
         prompt = Tester.PROMPT_TEMPLATE.format(description=desc)
-        response: ModelResponse = self.llm_accessor.call_model(prompt, Tester.SCHEMA)
-        return response
+        resp = self.llm_accessor.call_model(
+            prompt,
+            adapter=Tester.ADAPTER,
+            schema=Tester.SCHEMA,
+        )
+        return cast(TesterResponse, resp)

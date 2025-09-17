@@ -1,10 +1,12 @@
 from os import environ
 import json
 from typing import Any, Dict, Optional
-from pydantic import TypeAdapter
+
 import google.generativeai as genai
+from pydantic import TypeAdapter
+
 from .base_accessor import BaseModelAccessor, Tool
-from dataModel.model_response import ModelResponse
+from src.dataModel.model_response import ModelResponse
 
 class GeminiAccessor(BaseModelAccessor):
     def __init__(self):
@@ -12,60 +14,35 @@ class GeminiAccessor(BaseModelAccessor):
         # Models that support function calling
         self.tool_supported_models = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-pro"]
         
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str) -> ModelResponse:
-        """Basic text prompting for Gemini models"""
-        model_instance = genai.GenerativeModel(model)
-        
-        # Combine system and user prompts
-        full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
-        
-        response = model_instance.generate_content(full_prompt)
-        
-        content = response.text
-        if not content:
-            raise ValueError("No content in response")
-            
-        # Convert content to JSON format if needed
-        try:
-            json_content = json.loads(content)
-        except json.JSONDecodeError:
-            # If the model didn't return JSON, wrap it in a simple structure
-            json_content = {"text": content}
-            
-        return TypeAdapter(ModelResponse).validate_python(json_content)
-        
-    def execute_task_with_tools(
+    def call_model(
         self,
-        model: str,
-        system_prompt: str,
-        user_prompt: str,
+        prompt: str,
+        *,
+        adapter: TypeAdapter[ModelResponse],
+        schema: dict,
+        model: str = "gemini-1.5-pro",
+        system_prompt: str = "",
         tools: Optional[list[Tool]] = None,
     ) -> ModelResponse:
-        """Execute task with tools - native function calling if supported"""
-        if not tools or not self.supports_tools(model):
-            return self.prompt_model(model, system_prompt, user_prompt)
-            
         model_instance = genai.GenerativeModel(model)
-        gemini_tools = self._convert_to_gemini_tools(tools)
-        
-        full_prompt = f"System: {system_prompt}\n\nUser: {user_prompt}"
-        
-        response = model_instance.generate_content(
-            full_prompt,
-            tools=gemini_tools
-        )
-        
+        full_prompt = f"System: {system_prompt}\n\nUser: {prompt}"
+
+        if tools and self.supports_tools(model):
+            gemini_tools = self._convert_to_gemini_tools(tools)
+            response = model_instance.generate_content(full_prompt, tools=gemini_tools)
+        else:
+            response = model_instance.generate_content(full_prompt)
+
         content = response.text
         if not content:
             raise ValueError("No content in response")
-            
-        # Process and convert to ModelResponse
+
         try:
             json_content = json.loads(content)
         except json.JSONDecodeError:
             json_content = {"text": content}
-            
-        return TypeAdapter(ModelResponse).validate_python(json_content)
+
+        return adapter.validate_python(json_content)
     
     def supports_tools(self, model: str) -> bool:
         """Check if model supports function calling"""

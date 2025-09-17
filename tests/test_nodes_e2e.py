@@ -14,19 +14,15 @@ from src.dataModel.model_response import (
 import json
 
 
-def _patch_accessor(accessor: MockAccessor, *, call_model=None, exec_tools=None) -> MockAccessor:
+def _patch_accessor(accessor: MockAccessor, *, call_model=None) -> MockAccessor:
     if call_model:
-        def patched_prompt(model: str, system_prompt: str, user_prompt: str):
-            return call_model(user_prompt, None)
-        accessor.prompt_model = patched_prompt  # type: ignore
-    if exec_tools:
-        def patched_exec(model: str, system_prompt: str, user_prompt: str, tools=None):
-            return exec_tools(model, system_prompt, user_prompt, tools)
-        accessor.execute_task_with_tools = patched_exec  # type: ignore
+        def patched_call(prompt: str, *, adapter, schema, **kwargs):
+            return call_model(prompt, adapter, schema, **kwargs)
+        accessor.call_model = patched_call  # type: ignore
     return accessor
 
 
-def _hld_call_model(prompt: str, schema):
+def _hld_call_model(prompt: str, adapter, schema, **kwargs):
     subtasks = [
         Task(id="r1", description="research", type=TaskType.RESEARCH),
         Task(id="i1", description="impl", type=TaskType.IMPLEMENT),
@@ -37,15 +33,15 @@ def _hld_call_model(prompt: str, schema):
     return DecomposedResponse(subtasks=subtasks)
 
 
-def _research_exec(model: str, system_prompt: str, user_prompt: str, tools=None):
+def _research_exec(prompt: str, adapter, schema, *, tools=None, **kwargs):
     return ImplementedResponse(artifacts=["https://example.com"])
 
 
-def _impl_call_model(prompt: str, schema):
+def _impl_call_model(prompt: str, adapter, schema, **kwargs):
     return ImplementedResponse(content="def foo(): pass", artifacts=["foo.py"])
 
 
-def _test_call_model(prompt: str, schema):
+def _test_call_model(prompt: str, adapter, schema, **kwargs):
     return ImplementedResponse(content="pytest passed")
 
 
@@ -72,7 +68,7 @@ def test_end_to_end_chain(monkeypatch, tmp_path):
     monkeypatch.setitem(
         NODE_FACTORY,
         TaskType.RESEARCH,
-        lambda acc: Researcher(_patch_accessor(acc, exec_tools=_research_exec)),
+        lambda acc: Researcher(_patch_accessor(acc, call_model=_research_exec)),
     )
     monkeypatch.setitem(
         NODE_FACTORY,
@@ -155,7 +151,7 @@ def test_end_to_end_checkpoint_resume(monkeypatch, tmp_path):
     monkeypatch.setitem(
         NODE_FACTORY,
         TaskType.RESEARCH,
-        lambda acc: Researcher(_patch_accessor(acc, exec_tools=_research_exec)),
+        lambda acc: Researcher(_patch_accessor(acc, call_model=_research_exec)),
     )
     monkeypatch.setitem(
         NODE_FACTORY,

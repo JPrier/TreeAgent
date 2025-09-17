@@ -1,3 +1,5 @@
+from pydantic import TypeAdapter
+
 from agentNodes.implementer import Implementer
 from modelAccessors.base_accessor import BaseModelAccessor
 from dataModel.model_response import ImplementedResponse
@@ -8,14 +10,17 @@ class _StubAccessor(BaseModelAccessor):
     def __init__(self, result: ImplementedResponse) -> None:
         self._result = result
 
-    def call_model(self, prompt: str, schema):
+    def call_model(
+        self,
+        prompt: str,
+        *,
+        adapter: TypeAdapter[ImplementedResponse],
+        schema: dict,
+        model: str = "gpt-4",
+        system_prompt: str = "",
+        tools=None,
+    ) -> ImplementedResponse:
         return self._result
-
-    def prompt_model(self, model: str, system_prompt: str, user_prompt: str):  # pragma: no cover - unused
-        raise NotImplementedError()
-
-    def execute_task_with_tools(self, model: str, system_prompt: str, user_prompt: str, tools=None):  # pragma: no cover - unused
-        raise NotImplementedError()
 
 
 def test_implementer_returns_code():

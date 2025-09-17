@@ -1,7 +1,11 @@
+from typing import cast
+
+from pydantic import TypeAdapter
+
 from src.agentNodes.base_node import AgentNode
 from src.modelAccessors.base_accessor import BaseModelAccessor
 from src.dataModel.task import Task
-from src.dataModel.model_response import ModelResponse, ImplementedResponse
+from src.dataModel.model_response import ImplementedResponse, ModelResponse
 
 
 class LLDDesigner(AgentNode):
@@ -14,18 +18,25 @@ class LLDDesigner(AgentNode):
         "Return at most 5 subtasks using only the types: IMPLEMENT, RESEARCH, TEST."
     )
 
-    SCHEMA = ImplementedResponse
+    ADAPTER: TypeAdapter[ModelResponse] = cast(
+        TypeAdapter[ModelResponse], TypeAdapter(ImplementedResponse)
+    )
+    SCHEMA = ADAPTER.json_schema()
 
     def __init__(self, llm_accessor: BaseModelAccessor):
         """Create the designer with the given model accessor."""
         self.llm_accessor = llm_accessor
 
-    def execute_task(self, data: Task) -> ModelResponse:
+    def execute_task(self, data: Task) -> ImplementedResponse:
         """Generate low level design details for ``task``."""
         prompt = LLDDesigner.PROMPT_TEMPLATE.format(
             description=data.description,
             complexity=data.complexity,
         )
-        response: ModelResponse = self.llm_accessor.call_model(prompt, LLDDesigner.SCHEMA)
-        return response
+        resp = self.llm_accessor.call_model(
+            prompt,
+            adapter=LLDDesigner.ADAPTER,
+            schema=LLDDesigner.SCHEMA,
+        )
+        return cast(ImplementedResponse, resp)
 

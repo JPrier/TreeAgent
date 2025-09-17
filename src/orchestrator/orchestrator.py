@@ -4,7 +4,7 @@ import json
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, cast
 
 from src.logging_utils import init_logger
 
@@ -208,10 +208,10 @@ class AgentOrchestrator:
             project.taskResults[current_task.id] = response
             project.latestResponse = response
 
-            match response.response_type:
+            match response.type:
                 case ModelResponseType.DECOMPOSED:
-                    assert isinstance(response, DecomposedResponse)
-                    new_tasks = self._enqueue_subtasks(current_task, response.subtasks)
+                    decomposed = cast(DecomposedResponse, response)
+                    new_tasks = self._enqueue_subtasks(current_task, decomposed.subtasks)
                     project.queuedTasks.extend(new_tasks)
                     current_task.status = TaskStatus.COMPLETED
                     project.inProgressTasks.remove(current_task)
@@ -219,10 +219,10 @@ class AgentOrchestrator:
                     self.logger.info(
                         "%s task completed: produced %d subtasks",
                         current_task.type.name,
-                        len(response.subtasks),
+                        len(decomposed.subtasks),
                     )
                 case ModelResponseType.IMPLEMENTED:
-                    assert isinstance(response, ImplementedResponse)
+                    implemented = cast(ImplementedResponse, response)
                     if current_task.type is TaskType.REQUIREMENTS:
                         hld = Task(
                             id=f"{current_task.id}-hld",
@@ -240,12 +240,12 @@ class AgentOrchestrator:
                     self.logger.info(
                         "%s task completed: artifacts %s",
                         current_task.type.name,
-                        ", ".join(response.artifacts) if response.artifacts else "none",
+                        ", ".join(implemented.artifacts) if implemented.artifacts else "none",
                     )
                 case ModelResponseType.FOLLOW_UP_REQUIRED:
-                    assert isinstance(response, FollowUpResponse)
+                    follow_up = cast(FollowUpResponse, response)
                     if current_task.type is TaskType.REQUIREMENTS:
-                        question = response.follow_up_ask.description
+                        question = follow_up.follow_up_ask.description
                         answer = input(question + " ")
                         desc = f"{current_task.description}\n{answer}".strip()
                         hld = Task(
@@ -267,11 +267,11 @@ class AgentOrchestrator:
                         project.failedTasks.append(current_task)
                     self.logger.info("%s task requires follow up", current_task.type.name)
                 case ModelResponseType.FAILED:
-                    assert isinstance(response, FailedResponse)
+                    failure = cast(FailedResponse, response)
                     current_task.status = TaskStatus.FAILED
                     project.inProgressTasks.remove(current_task)
                     project.failedTasks.append(current_task)
-                    self.logger.error("Task %s failed: %s", current_task.id, response.error_message)
+                    self.logger.error("Task %s failed: %s", current_task.id, failure.error_message)
 
             save_project_state(project, checkpoint_dir)
 
