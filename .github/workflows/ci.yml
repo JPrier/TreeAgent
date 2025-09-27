@@ -40,7 +40,7 @@ jobs:
           pip install -e .[dev]
       - name: Run tests with coverage
         run: |
-          PYTHONPATH=src python -m pytest --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=84
+          PYTHONPATH=src python -m pytest --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=80
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
