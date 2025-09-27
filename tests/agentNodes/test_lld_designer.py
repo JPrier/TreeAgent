@@ -1,10 +1,10 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from agentNodes.lld_designer import LLDDesigner
-from dataModel.model_response import ImplementedResponse
-from dataModel.task import Task, TaskType
-from modelAccessors.base_accessor import BaseModelAccessor
+from src.agentNodes.lld_designer import LLDDesigner
+from src.dataModel.model_response import ImplementedResponse
+from src.dataModel.task import Task, TaskType
+from src.modelAccessors.base_accessor import BaseModelAccessor
 
 
 class _StubAccessor(BaseModelAccessor):
