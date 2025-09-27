@@ -1,40 +1,33 @@
-"""Test OpenAI accessor structured output compatibility."""
+"""Test OpenAI accessor model validation and structured output support."""
 
 import os
 from unittest.mock import Mock, patch
 
 from pydantic import TypeAdapter
+import pytest
 
 from src.modelAccessors.openai_accessor import OpenAIAccessor
 from src.dataModel.model_response import ImplementedResponse
 
 
-def test_structured_output_model_classification():
-    """Test that models are correctly classified for structured output support."""
+def test_supported_model_validation():
+    """Test that only supported models are accepted."""
     os.environ['OPENAI_API_KEY'] = 'test'
     accessor = OpenAIAccessor()
     
-    # Models that should support structured outputs
-    assert accessor.supports_structured_outputs("gpt-4o")
-    assert accessor.supports_structured_outputs("gpt-4o-mini")
-    assert accessor.supports_structured_outputs("gpt-4o-2024-08-06")
+    # Supported models should pass validation
+    assert "gpt-4o" in accessor.supported_models
+    assert "gpt-4o-mini" in accessor.supported_models
     
-    # Models that should NOT support structured outputs
-    assert not accessor.supports_structured_outputs("gpt-4")
-    assert not accessor.supports_structured_outputs("gpt-3.5-turbo")
+    # Unsupported models should not be in the list
+    assert "gpt-4" not in accessor.supported_models
+    assert "gpt-3.5-turbo" not in accessor.supported_models
 
 
 @patch('src.modelAccessors.openai_accessor.OpenAI')
-def test_non_structured_model_uses_json_object_format(mock_openai_class):
-    """Test that non-structured models use json_object format and enhanced prompts."""
-    # Setup mock
+def test_unsupported_model_raises_error(mock_openai_class):
+    """Test that unsupported models raise validation error."""
     mock_client = Mock()
-    mock_response = Mock()
-    mock_message = Mock()
-    mock_message.parsed = None
-    mock_message.content = '{"type": "implemented", "content": "test", "artifacts": []}'
-    mock_response.choices = [mock_message]
-    mock_client.chat.completions.create.return_value = mock_response
     mock_openai_class.return_value = mock_client
     
     os.environ['OPENAI_API_KEY'] = 'test'
@@ -42,28 +35,19 @@ def test_non_structured_model_uses_json_object_format(mock_openai_class):
     adapter = TypeAdapter(ImplementedResponse)
     schema = adapter.json_schema()
     
-    # Call with gpt-4 (non-structured model)
-    accessor.call_model(
-        "test prompt",
-        adapter=adapter,
-        schema=schema,
-        model="gpt-4",
-        system_prompt="You are a helpful assistant."
-    )
-    
-    # Verify correct response format and enhanced prompt
-    call_args = mock_client.chat.completions.create.call_args[1]
-    assert call_args["response_format"]["type"] == "json_object"
-    
-    # Verify system prompt was enhanced with schema information
-    system_message = call_args["messages"][0]["content"]
-    assert "schema" in system_message
-    assert "JSON" in system_message
+    # Should raise ValueError for unsupported model
+    with pytest.raises(ValueError, match="Unsupported model 'gpt-4'"):
+        accessor.call_model(
+            "test prompt",
+            adapter=adapter,
+            schema=schema,
+            model="gpt-4"  # This model is not supported
+        )
 
 
 @patch('src.modelAccessors.openai_accessor.OpenAI')
-def test_structured_model_uses_json_schema_format(mock_openai_class):
-    """Test that structured models use json_schema format."""
+def test_supported_model_uses_json_schema_format(mock_openai_class):
+    """Test that supported models use json_schema format."""
     # Setup mock
     mock_client = Mock()
     mock_response = Mock()
@@ -78,12 +62,12 @@ def test_structured_model_uses_json_schema_format(mock_openai_class):
     adapter = TypeAdapter(ImplementedResponse)
     schema = adapter.json_schema()
     
-    # Call with gpt-4o (structured model)
+    # Call with supported model
     accessor.call_model(
         "test prompt",
         adapter=adapter,
         schema=schema,
-        model="gpt-4o"
+        model="gpt-4o-mini"  # This model is supported
     )
     
     # Verify json_schema response format is used
@@ -92,3 +76,25 @@ def test_structured_model_uses_json_schema_format(mock_openai_class):
     assert response_format["type"] == "json_schema"
     assert "json_schema" in response_format
     assert response_format["json_schema"]["strict"] is True
+
+
+def test_default_model_is_supported():
+    """Test that the default model is in the supported list."""
+    os.environ['OPENAI_API_KEY'] = 'test'
+    accessor = OpenAIAccessor()
+    
+    # The default model should be supported
+    assert "gpt-4o-mini" in accessor.supported_models
+
+
+def test_tool_support():
+    """Test that tool support works for supported models."""
+    os.environ['OPENAI_API_KEY'] = 'test'
+    accessor = OpenAIAccessor()
+    
+    # Test tool support
+    assert accessor.supports_tools("gpt-4o")
+    assert accessor.supports_tools("gpt-4o-mini")
+    
+    # Old models shouldn't be in tool support either
+    assert not accessor.supports_tools("gpt-4")
