@@ -18,6 +18,8 @@ def test_supported_model_validation():
     # Supported models should pass validation
     assert "gpt-4o" in accessor.supported_models
     assert "gpt-4o-mini" in accessor.supported_models
+    assert "gpt-5-mini" in accessor.supported_models
+    assert "gpt-5-nano" in accessor.supported_models
     
     # Unsupported models should not be in the list
     assert "gpt-4" not in accessor.supported_models
@@ -67,7 +69,7 @@ def test_supported_model_uses_json_schema_format(mock_openai_class):
         "test prompt",
         adapter=adapter,
         schema=schema,
-        model="gpt-4o-mini"  # This model is supported
+        model="gpt-5-nano"  # This model is supported
     )
     
     # Verify json_schema response format is used
@@ -84,7 +86,7 @@ def test_default_model_is_supported():
     accessor = OpenAIAccessor()
     
     # The default model should be supported
-    assert "gpt-4o-mini" in accessor.supported_models
+    assert "gpt-5-nano" in accessor.supported_models
 
 
 def test_tool_support():
@@ -95,6 +97,8 @@ def test_tool_support():
     # Test tool support
     assert accessor.supports_tools("gpt-4o")
     assert accessor.supports_tools("gpt-4o-mini")
+    assert accessor.supports_tools("gpt-5-mini")
+    assert accessor.supports_tools("gpt-5-nano")
     
     # Old models shouldn't be in tool support either
     assert not accessor.supports_tools("gpt-4")

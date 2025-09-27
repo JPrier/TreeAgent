@@ -18,10 +18,12 @@ class OpenAIAccessor(BaseModelAccessor):
             "gpt-4o-2024-05-13", 
             "gpt-4o-2024-08-06",
             "gpt-4o-2024-11-20", 
-            "gpt-4o-mini-2024-07-18"
+            "gpt-4o-mini-2024-07-18",
+            "gpt-5-mini",
+            "gpt-5-nano"
         ]
         # Models that support function calling/tools (subset of supported models)
-        self.tool_supported_models = ["gpt-4o", "gpt-4o-mini"]
+        self.tool_supported_models = ["gpt-4o", "gpt-4o-mini", "gpt-5-mini", "gpt-5-nano"]
 
     def call_model(
         self,
@@ -29,7 +31,7 @@ class OpenAIAccessor(BaseModelAccessor):
         *,
         adapter: TypeAdapter[ModelResponse],
         schema: dict,
-        model: str = "gpt-4o-mini",
+        model: str = "gpt-5-nano",
         system_prompt: str = "",
         tools: Optional[list[Tool]] = None,
     ) -> ModelResponse:
