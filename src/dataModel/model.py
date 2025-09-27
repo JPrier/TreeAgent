@@ -7,5 +7,5 @@ class AccessorType(str, Enum):
     MOCK = "mock"
 
 class Model(BaseModel):
-    name: str = "gpt-4.1-nano"
+    name: str = "gpt-5-nano"
     accessor_type: AccessorType = AccessorType.MOCK

@@ -17,7 +17,7 @@ class BaseModelAccessor(ABC):
         *,
         adapter: TypeAdapter[ModelResponse],
         schema: dict,
-        model: str = "gpt-4",
+        model: str = "gpt-5-nano",
         system_prompt: str = "",
         tools: Optional[list[Tool]] = None,
     ) -> ModelResponse:
