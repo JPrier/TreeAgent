@@ -4,7 +4,6 @@ import os
 from unittest.mock import Mock, patch
 
 from pydantic import TypeAdapter
-import pytest
 
 from src.modelAccessors.openai_accessor import OpenAIAccessor
 from src.dataModel.model_response import ImplementedResponse
@@ -38,24 +37,38 @@ def test_unsupported_model_raises_error(mock_openai_class):
     schema = adapter.json_schema()
     
     # Should raise ValueError for unsupported model
-    with pytest.raises(ValueError, match="Unsupported model 'gpt-4'"):
+    try:
         accessor.call_model(
             "test prompt",
             adapter=adapter,
             schema=schema,
             model="gpt-4"  # This model is not supported
         )
+        assert False, "Expected ValueError to be raised"
+    except ValueError as e:
+        assert "Unsupported model 'gpt-4'" in str(e)
+    except Exception as e:
+        assert False, f"Expected ValueError, got {type(e).__name__}: {e}"
 
 
 @patch('src.modelAccessors.openai_accessor.OpenAI')
 def test_supported_model_uses_json_schema_format(mock_openai_class):
     """Test that supported models use json_schema format."""
-    # Setup mock
+    # Use a custom class instead of Mock to avoid the parsed attribute issue
+    class MockMessage:
+        def __init__(self, content):
+            self.content = content
+            # Don't create a parsed attribute
+
+    class MockChoice:
+        def __init__(self, message):
+            self.message = message
+    
     mock_client = Mock()
     mock_response = Mock()
-    mock_message = Mock()
-    mock_message.parsed = {"type": "implemented", "content": "test", "artifacts": []}
-    mock_response.choices = [mock_message]
+    mock_message = MockMessage('{"type": "implemented", "content": "test", "artifacts": []}')
+    mock_choice = MockChoice(mock_message)
+    mock_response.choices = [mock_choice]
     mock_client.chat.completions.create.return_value = mock_response
     mock_openai_class.return_value = mock_client
     
@@ -64,8 +77,8 @@ def test_supported_model_uses_json_schema_format(mock_openai_class):
     adapter = TypeAdapter(ImplementedResponse)
     schema = adapter.json_schema()
     
-    # Call with supported model
-    accessor.call_model(
+    # Call with supported model  
+    response = accessor.call_model(
         "test prompt",
         adapter=adapter,
         schema=schema,
@@ -78,6 +91,10 @@ def test_supported_model_uses_json_schema_format(mock_openai_class):
     assert response_format["type"] == "json_schema"
     assert "json_schema" in response_format
     assert response_format["json_schema"]["strict"] is True
+    
+    # Verify the response is properly parsed
+    assert response.type == "implemented"
+    assert response.content == "test"
 
 
 def test_default_model_is_supported():
