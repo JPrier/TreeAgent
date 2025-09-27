@@ -89,6 +89,11 @@ treeagent "hello world"           # prints skeleton task tree
 treeagent --model-type openai "hello"  # use OpenAI accessor by default
 ```
 
+> **Note**: If you encounter import issues with the `treeagent` command on Windows, you can alternatively use:
+> ```bash
+> python -m src.treeagent "hello world"
+> ```
+
 > Heads-up: you’ll need an OpenAI (or other) API key in your shell once the first agent stubs call an LLM.
 
 
