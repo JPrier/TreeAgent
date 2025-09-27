@@ -5,7 +5,7 @@ from src.dataModel.task import Task, TaskType
 from src.dataModel.model_response import (
     DecomposedResponse,
     ImplementedResponse,
-    DesignerResponse,
+    ModelResponse,
 )
 from src.modelAccessors.base_accessor import BaseModelAccessor
 
@@ -18,12 +18,12 @@ class _StubAccessor(BaseModelAccessor):
         self,
         prompt: str,
         *,
-        adapter: TypeAdapter[DesignerResponse],
+        adapter: TypeAdapter[ModelResponse],
         schema: dict,
         model: str = "gpt-4",
         system_prompt: str = "",
         tools=None,
-    ) -> DesignerResponse:
+    ) -> ModelResponse:
         return self._result
 
 
