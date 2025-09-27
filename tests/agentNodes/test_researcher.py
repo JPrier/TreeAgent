@@ -1,11 +1,11 @@
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from agentNodes.researcher import Researcher
-from tools.web_search import WEB_SEARCH_TOOL
-from dataModel.model_response import ImplementedResponse
-from dataModel.task import Task, TaskType
-from modelAccessors.base_accessor import BaseModelAccessor
+from src.agentNodes.researcher import Researcher
+from src.tools.web_search import WEB_SEARCH_TOOL
+from src.dataModel.model_response import ImplementedResponse, ModelResponse
+from src.dataModel.task import Task, TaskType
+from src.modelAccessors.base_accessor import BaseModelAccessor
 
 
 class _StubAccessor(BaseModelAccessor):
@@ -16,12 +16,12 @@ class _StubAccessor(BaseModelAccessor):
         self,
         prompt: str,
         *,
-        adapter: TypeAdapter[ImplementedResponse],
+        adapter: TypeAdapter[ModelResponse],
         schema: dict,
         model: str = "gpt-4",
         system_prompt: str = "",
         tools=None,
-    ) -> ImplementedResponse:
+    ) -> ModelResponse:
         return self._result
 
 

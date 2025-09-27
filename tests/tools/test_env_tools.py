@@ -1,6 +1,6 @@
 import subprocess
 
-from tools.env_tools import EnvManager
+from src.tools.env_tools import EnvManager
 
 
 def test_npm_install_runs_command(monkeypatch):

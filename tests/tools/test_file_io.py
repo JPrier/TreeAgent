@@ -5,7 +5,7 @@ import threading
 import time
 from contextlib import contextmanager
 
-import tools.file_io as file_io
+import src.tools.file_io as file_io
 
 def test_read_file_returns_contents(monkeypatch):
     def fake_open(path, mode="r", encoding=None):
