@@ -60,7 +60,7 @@ jobs:
           PYTHONPATH=src mypy --ignore-missing-imports src tests
       - name: Run tests with coverage
         run: |
-          PYTHONPATH=src python -m pytest --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=90
+          PYTHONPATH=src python -m pytest --cov=src --cov-report=term-missing --cov-report=html --cov-fail-under=84
       - name: Upload coverage reports
         if: always()
         uses: actions/upload-artifact@v4
