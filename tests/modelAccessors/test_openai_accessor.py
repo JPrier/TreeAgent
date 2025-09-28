@@ -350,3 +350,49 @@ def test_openai_required_array_compliance():
     # Should be identical (except potentially reordered)
     assert set(unchanged_schema["required"]) == {"prop1", "prop2"}
     assert unchanged_schema["properties"] == complete_schema["properties"]
+
+
+def test_recursive_required_array_fix():
+    """Test that nested objects in $defs also get complete required arrays."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Create a schema with nested objects that have incomplete required arrays
+    schema_with_nested_issues = {
+        "type": "object",
+        "properties": {
+            "main_field": {"type": "string"}
+        },
+        "required": ["main_field"],
+        "$defs": {
+            "IncompleteObject": {
+                "type": "object",
+                "properties": {
+                    "prop1": {"type": "string"},
+                    "prop2": {"type": "number"},
+                    "prop3": {"type": "boolean"}
+                },
+                "required": ["prop1"]  # Missing prop2 and prop3
+            },
+            "EmptyRequiredObject": {
+                "type": "object", 
+                "properties": {
+                    "field_a": {"type": "string"},
+                    "field_b": {"type": "array"}
+                }
+                # No required array at all
+            }
+        }
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(schema_with_nested_issues)
+    
+    # Check that nested objects now have complete required arrays
+    incomplete_obj = fixed_schema["$defs"]["IncompleteObject"]
+    assert set(incomplete_obj["required"]) == {"prop1", "prop2", "prop3"}
+    
+    empty_req_obj = fixed_schema["$defs"]["EmptyRequiredObject"] 
+    assert set(empty_req_obj["required"]) == {"field_a", "field_b"}
+    
+    # Verify top level is still correct
+    assert set(fixed_schema["required"]) == {"main_field"}

@@ -111,21 +111,44 @@ class OpenAIAccessor(BaseModelAccessor):
         
         # Ensure OpenAI's requirement: all properties must be in required array
         # This prevents the "Missing 'content'" error by guaranteeing compliance
-        if result_schema.get("type") == "object" and "properties" in result_schema:
-            properties = result_schema["properties"]
-            required = result_schema.get("required", [])
-            
-            # Add any missing properties to required array
-            all_prop_names = list(properties.keys())
-            missing_required = [prop for prop in all_prop_names if prop not in required]
-            
-            if missing_required:
-                # Ensure we're modifying a mutable list
-                if not isinstance(result_schema["required"], list):
-                    result_schema["required"] = list(required)
-                result_schema["required"].extend(missing_required)
+        # Apply this fix recursively to ALL objects in the schema (including $defs)
+        self._fix_required_fields_recursive(result_schema)
         
         return result_schema
+    
+    def _fix_required_fields_recursive(self, schema):
+        """
+        Recursively ensure all objects in the schema have complete required arrays.
+        
+        OpenAI requires that every object with properties must have a required array
+        containing ALL property keys, not just some of them. This applies to:
+        - The top-level schema object
+        - All objects in $defs or definitions  
+        - Any nested objects in properties
+        """
+        if not isinstance(schema, dict):
+            return
+            
+        # If this object has properties, ensure required array contains all property keys
+        if "properties" in schema and isinstance(schema["properties"], dict):
+            all_property_keys = list(schema["properties"].keys())
+            if all_property_keys:  # Only set required if there are properties
+                schema["required"] = all_property_keys
+        
+        # Recursively fix objects in $defs and definitions
+        for defs_key in ["$defs", "definitions"]:
+            if defs_key in schema and isinstance(schema[defs_key], dict):
+                for def_schema in schema[defs_key].values():
+                    self._fix_required_fields_recursive(def_schema)
+        
+        # Recursively fix nested objects in properties
+        if "properties" in schema and isinstance(schema["properties"], dict):
+            for prop_schema in schema["properties"].values():
+                self._fix_required_fields_recursive(prop_schema)
+        
+        # Recursively fix array item schemas
+        if "items" in schema and isinstance(schema["items"], dict):
+            self._fix_required_fields_recursive(schema["items"])
 
     def _contains_oneof_anyof(self, obj) -> bool:
         """Recursively check if an object contains oneOf or anyOf."""
