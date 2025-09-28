@@ -118,10 +118,14 @@ class OpenAIAccessor(BaseModelAccessor):
     
     def _fix_required_fields_recursive(self, schema):
         """
-        Recursively ensure all objects in the schema have complete required arrays.
+        Recursively ensure all objects in the schema have complete required arrays
+        and proper additionalProperties settings.
         
-        OpenAI requires that every object with properties must have a required array
-        containing ALL property keys, not just some of them. This applies to:
+        OpenAI requires that every object with properties must have:
+        1. A required array containing ALL property keys
+        2. additionalProperties set to false
+        
+        This applies to:
         - The top-level schema object
         - All objects in $defs or definitions  
         - Any nested objects in properties
@@ -129,11 +133,17 @@ class OpenAIAccessor(BaseModelAccessor):
         if not isinstance(schema, dict):
             return
             
+        # If this is an object type, ensure additionalProperties is false
+        if schema.get("type") == "object":
+            schema["additionalProperties"] = False
+            
         # If this object has properties, ensure required array contains all property keys
         if "properties" in schema and isinstance(schema["properties"], dict):
             all_property_keys = list(schema["properties"].keys())
             if all_property_keys:  # Only set required if there are properties
                 schema["required"] = all_property_keys
+                # Also ensure additionalProperties is false for objects with properties
+                schema["additionalProperties"] = False
         
         # Recursively fix objects in $defs and definitions
         for defs_key in ["$defs", "definitions"]:

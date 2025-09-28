@@ -163,7 +163,15 @@ def test_prepare_schema_for_openai():
         "required": ["test"]
     }
     unchanged_schema = accessor._prepare_schema_for_openai(object_schema)
-    assert unchanged_schema == object_schema
+    
+    # The schema should now have additionalProperties: false added
+    expected_schema = {
+        "type": "object",
+        "properties": {"test": {"type": "string"}},
+        "required": ["test"],
+        "additionalProperties": False
+    }
+    assert unchanged_schema == expected_schema
 
 
 def test_extract_response_from_openai_format():
@@ -350,6 +358,81 @@ def test_openai_required_array_compliance():
     # Should be identical (except potentially reordered)
     assert set(unchanged_schema["required"]) == {"prop1", "prop2"}
     assert unchanged_schema["properties"] == complete_schema["properties"]
+
+
+def test_additional_properties_recursive_fix():
+    """Test that all objects in schema get additionalProperties: false."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Create a schema with nested objects missing additionalProperties
+    schema_missing_additional_props = {
+        "type": "object",
+        "properties": {
+            "main_field": {"type": "string"}
+        },
+        "required": ["main_field"],
+        "$defs": {
+            "ObjectWithoutAdditionalProps": {
+                "type": "object",
+                "properties": {
+                    "prop1": {"type": "string"},
+                    "nested_object": {
+                        "type": "object",
+                        "properties": {
+                            "nested_prop": {"type": "number"}
+                        }
+                    }
+                },
+                "required": ["prop1"]
+            },
+            "AnotherObject": {
+                "properties": {
+                    "field_a": {"type": "string"}
+                }
+                # No type specified, but has properties
+            }
+        }
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(schema_missing_additional_props)
+    
+    # Function to recursively check all objects have additionalProperties: false
+    def check_additional_properties(obj, path=""):
+        issues = []
+        if isinstance(obj, dict):
+            # Check if this should have additionalProperties
+            if obj.get("type") == "object" or "properties" in obj:
+                if not (obj.get("additionalProperties") is False):
+                    issues.append(f"{path}: missing or incorrect additionalProperties")
+            
+            # Recurse into nested structures
+            for key, value in obj.items():
+                if key in ["$defs", "definitions"] and isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        issues.extend(check_additional_properties(sub_value, f"{path}.{key}.{sub_key}"))
+                elif key == "properties" and isinstance(value, dict):
+                    for prop_key, prop_value in value.items():
+                        issues.extend(check_additional_properties(prop_value, f"{path}.{key}.{prop_key}"))
+                elif key == "items" and isinstance(value, dict):
+                    issues.extend(check_additional_properties(value, f"{path}.{key}"))
+        
+        return issues
+    
+    issues = check_additional_properties(fixed_schema, "root")
+    assert len(issues) == 0, f"Found additionalProperties issues: {issues}"
+    
+    # Verify specific objects
+    assert fixed_schema["additionalProperties"] is False, "Root should have additionalProperties: false"
+    
+    obj1 = fixed_schema["$defs"]["ObjectWithoutAdditionalProps"]
+    assert obj1["additionalProperties"] is False, "ObjectWithoutAdditionalProps should have additionalProperties: false"
+    
+    nested_obj = obj1["properties"]["nested_object"]
+    assert nested_obj["additionalProperties"] is False, "Nested object should have additionalProperties: false"
+    
+    obj2 = fixed_schema["$defs"]["AnotherObject"]  
+    assert obj2["additionalProperties"] is False, "AnotherObject should have additionalProperties: false"
 
 
 def test_recursive_required_array_fix():
