@@ -160,7 +160,13 @@ class OpenAIAccessor(BaseModelAccessor):
                         # Create a new dict without anyOf
                         cleaned = {k: v for k, v in obj.items() if k != "anyOf"}
                         cleaned.update(other_schema)
-                        # Make it nullable by not including it in required fields
+                        
+                        # If the field had a null default but is now non-nullable, remove the default
+                        # This prevents invalid schemas where required string fields have null defaults
+                        if cleaned.get("default") is None and cleaned.get("type") != "null":
+                            # Remove null default for non-nullable required fields
+                            cleaned.pop("default", None)
+                        
                         return self._clean_oneof_anyof_recursive(cleaned)
             
             # Handle oneOf (shouldn't happen after flattening, but just in case)
