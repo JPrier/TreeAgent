@@ -97,7 +97,8 @@ class OpenAIAccessor(BaseModelAccessor):
         # Check if the schema already has a root type of "object" and no oneOf/anyOf
         if schema.get("type") == "object" and not self._contains_oneof_anyof(schema):
             # Even for simple object schemas, ensure OpenAI compliance
-            result_schema = schema.copy()
+            import copy
+            result_schema = copy.deepcopy(schema)
         else:
             # If it's a oneOf/anyOf schema (discriminated union), flatten it
             if "oneOf" in schema or "anyOf" in schema:
@@ -119,7 +120,10 @@ class OpenAIAccessor(BaseModelAccessor):
             missing_required = [prop for prop in all_prop_names if prop not in required]
             
             if missing_required:
-                result_schema["required"] = required + missing_required
+                # Ensure we're modifying a mutable list
+                if not isinstance(result_schema["required"], list):
+                    result_schema["required"] = list(required)
+                result_schema["required"].extend(missing_required)
         
         return result_schema
 
