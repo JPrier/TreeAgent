@@ -248,3 +248,38 @@ def test_json_fallback_unwrapping_integration():
         # Verify the response was handled correctly
         assert hasattr(result, 'type')
         assert result.type == "implemented"
+
+def test_full_modelresponse_compatibility():
+    """Test that the full ModelResponse schema is OpenAI compatible after flattening."""
+    # This tests the exact scenario from the GitHub issue
+    adapter = TypeAdapter(ModelResponse)
+    schema = adapter.json_schema()
+    
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+    
+    # The original schema has oneOf which OpenAI doesn't support
+    assert "oneOf" in schema
+    
+    # After preparation, should be fully OpenAI compatible
+    openai_schema = accessor._prepare_schema_for_openai(schema)
+    assert openai_schema["type"] == "object"
+    assert "oneOf" not in str(openai_schema)
+    assert "anyOf" not in str(openai_schema)
+    assert openai_schema["required"] == ["type"]
+    
+    # Should have all possible properties from all union members
+    properties = openai_schema["properties"]
+    expected_props = ["type", "content", "artifacts", "subtasks", "follow_up_ask", "error_message", "retryable"]
+    for prop in expected_props:
+        assert prop in properties, f"Missing property: {prop}"
+    
+    # Type field should have all discriminator values
+    type_prop = properties["type"]
+    assert type_prop["type"] == "string"
+    expected_types = {"decomposed", "implemented", "follow_up_required", "failed"}
+    assert set(type_prop["enum"]) == expected_types
+    
+    # Should preserve complex type references
+    assert "$defs" in openai_schema
+    assert "Task" in openai_schema["$defs"]
