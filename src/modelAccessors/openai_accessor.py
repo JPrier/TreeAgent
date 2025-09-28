@@ -173,7 +173,12 @@ class OpenAIAccessor(BaseModelAccessor):
             return schema
             
         # Get definitions from the original schema
-        definitions = schema.get("$defs", {})
+        # Use a more robust way to find definitions in case of encoding issues
+        definitions = {}
+        for key, value in schema.items():
+            if key.endswith("defs") and isinstance(value, dict):
+                definitions = value
+                break
         
         # Collect all properties and required fields from all alternatives
         all_properties = {}
@@ -217,7 +222,7 @@ class OpenAIAccessor(BaseModelAccessor):
         flattened = {
             "type": "object",
             "properties": all_properties,
-            "required": list(required_fields),
+            "required": list(all_properties.keys()),  # OpenAI requires all properties to be in required
             "additionalProperties": False
         }
         
