@@ -290,3 +290,63 @@ def test_full_modelresponse_compatibility():
     assert has_defs
     defs_key = next(key for key in openai_schema.keys() if key.endswith("defs"))
     assert "Task" in openai_schema[defs_key]
+
+
+def test_openai_required_array_compliance():
+    """Test that all properties are included in required array for OpenAI compliance."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Test case 1: Object schema missing some required properties
+    incomplete_schema = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "enum": ["test"]},
+            "content": {"type": "string"},
+            "optional_field": {"type": "string", "default": "default"}
+        },
+        "required": ["type"],  # Missing content and optional_field
+        "additionalProperties": False
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(incomplete_schema)
+    
+    # All properties should now be in required array
+    properties = set(fixed_schema["properties"].keys())
+    required = set(fixed_schema["required"])
+    assert properties == required, f"Properties {properties} != Required {required}"
+    assert "content" in fixed_schema["required"], "content should be in required array"
+
+    # Test case 2: Empty required array  
+    empty_required_schema = {
+        "type": "object",
+        "properties": {
+            "field1": {"type": "string"},
+            "field2": {"type": "number"}
+        },
+        "required": [],
+        "additionalProperties": False
+    }
+
+    fixed_empty = accessor._prepare_schema_for_openai(empty_required_schema)
+    
+    # All properties should be added to required
+    assert len(fixed_empty["required"]) == len(fixed_empty["properties"])
+    assert set(fixed_empty["required"]) == set(fixed_empty["properties"].keys())
+
+    # Test case 3: Schema that already has all properties in required (should be unchanged)
+    complete_schema = {
+        "type": "object", 
+        "properties": {
+            "prop1": {"type": "string"},
+            "prop2": {"type": "boolean"}
+        },
+        "required": ["prop1", "prop2"],
+        "additionalProperties": False
+    }
+
+    unchanged_schema = accessor._prepare_schema_for_openai(complete_schema)
+    
+    # Should be identical (except potentially reordered)
+    assert set(unchanged_schema["required"]) == {"prop1", "prop2"}
+    assert unchanged_schema["properties"] == complete_schema["properties"]
