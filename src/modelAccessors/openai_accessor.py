@@ -96,16 +96,32 @@ class OpenAIAccessor(BaseModelAccessor):
         """
         # Check if the schema already has a root type of "object" and no oneOf/anyOf
         if schema.get("type") == "object" and not self._contains_oneof_anyof(schema):
-            return schema
-        
-        # If it's a oneOf/anyOf schema (discriminated union), flatten it
-        if "oneOf" in schema or "anyOf" in schema:
-            flattened = self._flatten_discriminated_union(schema)
+            # Even for simple object schemas, ensure OpenAI compliance
+            result_schema = schema.copy()
         else:
-            flattened = schema
+            # If it's a oneOf/anyOf schema (discriminated union), flatten it
+            if "oneOf" in schema or "anyOf" in schema:
+                flattened = self._flatten_discriminated_union(schema)
+            else:
+                flattened = schema
+                
+            # Clean any remaining oneOf/anyOf structures (like nullable fields)
+            result_schema = self._clean_oneof_anyof_recursive(flattened)
+        
+        # Ensure OpenAI's requirement: all properties must be in required array
+        # This prevents the "Missing 'content'" error by guaranteeing compliance
+        if result_schema.get("type") == "object" and "properties" in result_schema:
+            properties = result_schema["properties"]
+            required = result_schema.get("required", [])
             
-        # Clean any remaining oneOf/anyOf structures (like nullable fields)
-        return self._clean_oneof_anyof_recursive(flattened)
+            # Add any missing properties to required array
+            all_prop_names = list(properties.keys())
+            missing_required = [prop for prop in all_prop_names if prop not in required]
+            
+            if missing_required:
+                result_schema["required"] = required + missing_required
+        
+        return result_schema
 
     def _contains_oneof_anyof(self, obj) -> bool:
         """Recursively check if an object contains oneOf or anyOf."""
