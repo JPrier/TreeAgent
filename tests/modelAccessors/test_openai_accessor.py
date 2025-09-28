@@ -124,8 +124,8 @@ def test_tool_support():
 
 
 def test_prepare_schema_for_openai():
-    """Test that discriminated union schemas are properly wrapped for OpenAI compatibility."""
-    # Test with discriminated union (should be wrapped)
+    """Test that discriminated union schemas are properly flattened for OpenAI compatibility."""
+    # Test with discriminated union (should be flattened)
     adapter = cast(TypeAdapter[ModelResponse], TypeAdapter(ClarifierResponse))
     union_schema = adapter.json_schema()
     
@@ -133,16 +133,28 @@ def test_prepare_schema_for_openai():
     with patch('src.modelAccessors.openai_accessor.OpenAI'):
         accessor = OpenAIAccessor()
     
-    # Test union schema wrapping
+    # Test union schema flattening
     fixed_schema = accessor._prepare_schema_for_openai(union_schema)
     assert fixed_schema["type"] == "object"
     assert "properties" in fixed_schema
-    assert "response" in fixed_schema["properties"]
-    assert fixed_schema["required"] == ["response"]
+    assert "oneOf" not in fixed_schema
+    assert "anyOf" not in fixed_schema
+    assert fixed_schema["required"] == ["type"]
     assert fixed_schema["additionalProperties"] is False
-    assert fixed_schema["properties"]["response"] == union_schema
     
-    # Test object schema (should not be wrapped)
+    # Should have properties from both FollowUpResponse and ImplementedResponse
+    properties = fixed_schema["properties"]
+    assert "type" in properties
+    assert "content" in properties  # Common field
+    assert "artifacts" in properties  # Common field
+    assert "follow_up_ask" in properties  # FollowUpResponse field
+    
+    # Type field should have correct enum values
+    type_prop = properties["type"]
+    assert type_prop["type"] == "string"
+    assert set(type_prop["enum"]) == {"follow_up_required", "implemented"}
+    
+    # Test object schema (should not be changed)
     object_schema = {
         "type": "object",
         "properties": {"test": {"type": "string"}},
@@ -157,15 +169,15 @@ def test_extract_response_from_openai_format():
     with patch('src.modelAccessors.openai_accessor.OpenAI'):
         accessor = OpenAIAccessor()
     
-    # Test with discriminated union schema (should be unwrapped)
+    # Test with discriminated union schema (should be returned as-is)
     adapter = cast(TypeAdapter[ModelResponse], TypeAdapter(ClarifierResponse))
     union_schema = adapter.json_schema()
     
-    wrapped_response = {"response": {"type": "implemented", "content": "test"}}
-    extracted = accessor._extract_response_from_openai_format(wrapped_response, union_schema)
+    response = {"type": "implemented", "content": "test"}
+    extracted = accessor._extract_response_from_openai_format(response, union_schema)
     assert extracted == {"type": "implemented", "content": "test"}
     
-    # Test with object schema (should not be unwrapped)
+    # Test with object schema (should be returned as-is)
     object_schema = {
         "type": "object",
         "properties": {"test": {"type": "string"}},
@@ -177,7 +189,7 @@ def test_extract_response_from_openai_format():
 
 
 def test_response_unwrapping_integration():
-    """Test that wrapped responses are properly unwrapped in the full call flow."""
+    """Test that flattened responses are properly handled in the full call flow."""
     # Mock the OpenAI client and response
     with patch('src.modelAccessors.openai_accessor.OpenAI') as mock_openai:
         accessor = OpenAIAccessor()
@@ -185,9 +197,9 @@ def test_response_unwrapping_integration():
         mock_openai.return_value = mock_client
         accessor.client = mock_client
         
-        # Create mock response with wrapped data
+        # Create mock response with flattened data (no wrapping)
         mock_message = Mock()
-        mock_message.parsed = {"response": {"type": "implemented", "content": "test"}}
+        mock_message.parsed = {"type": "implemented", "content": "test"}
         mock_response = Mock()
         mock_response.choices = [Mock(message=mock_message)]
         mock_client.chat.completions.create.return_value = mock_response
@@ -202,13 +214,13 @@ def test_response_unwrapping_integration():
             schema=schema
         )
         
-        # Verify the response was unwrapped correctly
+        # Verify the response was handled correctly
         assert hasattr(result, 'type')
         assert result.type == "implemented"
 
 
 def test_json_fallback_unwrapping_integration():
-    """Test that JSON fallback also unwraps responses correctly."""
+    """Test that JSON fallback also handles flattened responses correctly."""
     with patch('src.modelAccessors.openai_accessor.OpenAI') as mock_openai:
         accessor = OpenAIAccessor()
         mock_client = Mock()
@@ -218,7 +230,7 @@ def test_json_fallback_unwrapping_integration():
         # Create mock response with JSON content (no parsed attribute)
         mock_message = Mock()
         mock_message.parsed = None
-        mock_message.content = json.dumps({"response": {"type": "implemented", "content": "test"}})
+        mock_message.content = json.dumps({"type": "implemented", "content": "test"})
         mock_response = Mock()
         mock_response.choices = [Mock(message=mock_message)]
         mock_client.chat.completions.create.return_value = mock_response
@@ -233,6 +245,6 @@ def test_json_fallback_unwrapping_integration():
             schema=schema
         )
         
-        # Verify the response was unwrapped correctly
+        # Verify the response was handled correctly
         assert hasattr(result, 'type')
         assert result.type == "implemented"
