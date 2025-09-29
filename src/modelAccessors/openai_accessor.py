@@ -167,22 +167,30 @@ class OpenAIAccessor(BaseModelAccessor):
         """
         Make each branch of a oneOf/anyOf union OpenAI compliant without flattening.
         
-        This processes each branch to ensure it has additionalProperties: false
-        and proper structure, while preserving the union semantics.
+        This preserves union semantics while ensuring compliance.
         """
         if "oneOf" in schema:
             for branch in schema["oneOf"]:
                 if isinstance(branch, dict) and "$ref" not in branch:
-                    # Make this branch OpenAI compliant
-                    if branch.get("type") == "object" or "properties" in branch:
-                        branch["additionalProperties"] = False
-                        
+                    self._make_object_compliant(branch)
+                    
         if "anyOf" in schema:
             for branch in schema["anyOf"]:
                 if isinstance(branch, dict) and "$ref" not in branch:
-                    # Make this branch OpenAI compliant  
-                    if branch.get("type") == "object" or "properties" in branch:
-                        branch["additionalProperties"] = False
+                    self._make_object_compliant(branch)
+        
+        # Also recursively fix any nested $defs
+        for defs_key in ["$defs", "definitions"]:
+            if defs_key in schema and isinstance(schema[defs_key], dict):
+                for def_schema in schema[defs_key].values():
+                    self._fix_required_fields_recursive(def_schema)
+    
+    def _make_object_compliant(self, obj: dict):
+        """Make a single object OpenAI compliant."""
+        if obj.get("type") == "object" or "properties" in obj:
+            obj["additionalProperties"] = False
+            # Ensure required array exists but don't force all properties
+            obj.setdefault("required", [])
     
     def _clean_problematic_unions(self, schema: dict) -> dict:
         """
