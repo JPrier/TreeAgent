@@ -165,3 +165,23 @@ processing the remaining tasks.
 5. Metrics & logging – capture token counts, wall-clock time, and per-node error traces.
 
 6. Extensible UI – optional graph-viz or web dashboard to visualise task trees.
+
+---
+
+## GitHub Copilot Integration
+
+TreeAgent now includes GitHub Copilot integration for enhanced AI-assisted development:
+
+- **GitHub Copilot Accessor**: Use GitHub Copilot as a model accessor via `gh copilot` CLI
+- **GitHub Issue Tools**: Complete issue management (create, update, comment, track)
+- **Copilot-style CLI**: GitHub Copilot inspired command interface
+
+```bash
+# Create and track a task in GitHub
+gh-copilot-agent-task create "Build a REST API" --repo owner/repo --follow
+
+# Follow existing tasks
+gh-copilot-agent-task follow 123 --repo owner/repo
+```
+
+See [GITHUB_COPILOT_INTEGRATION.md](GITHUB_COPILOT_INTEGRATION.md) for detailed usage instructions.

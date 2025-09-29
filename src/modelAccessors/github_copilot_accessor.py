@@ -40,6 +40,15 @@ class GitHubCopilotAccessor(BaseModelAccessor):
                 "See https://github.com/cli/cli#installation for installation instructions."
             )
         
+        # Auto-include GitHub tools if not already provided
+        if tools is None:
+            from ..tools.github_tools import GITHUB_TOOLS
+            tools = GITHUB_TOOLS
+        elif tools and not any(tool.name.startswith('github') for tool in tools):
+            # Add GitHub tools if they're not already included
+            from ..tools.github_tools import GITHUB_TOOLS
+            tools = tools + GITHUB_TOOLS
+        
         # Combine system prompt and user prompt
         full_prompt = f"{system_prompt}\n\n{prompt}".strip()
         
