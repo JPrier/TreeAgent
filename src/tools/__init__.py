@@ -15,6 +15,22 @@ from .file_io import (
     read_directory,
     write_directory,
 )
+from .github_tools import (
+    GitHubIssueManager,
+    get_issue,
+    create_issue,
+    update_issue,
+    comment_on_issue,
+    list_issues,
+    close_issue,
+    GET_ISSUE_TOOL,
+    CREATE_ISSUE_TOOL,
+    UPDATE_ISSUE_TOOL,
+    COMMENT_ISSUE_TOOL,
+    LIST_ISSUES_TOOL,
+    CLOSE_ISSUE_TOOL,
+    GITHUB_TOOLS,
+)
 
 __all__ = [
     "WEB_SEARCH_TOOL",
@@ -31,4 +47,18 @@ __all__ = [
     "WRITE_DIRECTORY_TOOL",
     "read_directory",
     "write_directory",
+    "GitHubIssueManager",
+    "get_issue",
+    "create_issue",
+    "update_issue",
+    "comment_on_issue",
+    "list_issues",
+    "close_issue",
+    "GET_ISSUE_TOOL",
+    "CREATE_ISSUE_TOOL",
+    "UPDATE_ISSUE_TOOL",
+    "COMMENT_ISSUE_TOOL",
+    "LIST_ISSUES_TOOL",
+    "CLOSE_ISSUE_TOOL",
+    "GITHUB_TOOLS",
 ]
