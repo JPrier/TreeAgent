@@ -124,8 +124,8 @@ def test_tool_support():
 
 
 def test_prepare_schema_for_openai():
-    """Test that discriminated union schemas are properly flattened for OpenAI compatibility."""
-    # Test with discriminated union (should be flattened)
+    """Test that discriminated union schemas are made OpenAI-compliant while preserving structure."""
+    # Test with discriminated union (should preserve oneOf structure, not flatten)
     adapter = cast(TypeAdapter[ModelResponse], TypeAdapter(ClarifierResponse))
     union_schema = adapter.json_schema()
     
@@ -133,45 +133,46 @@ def test_prepare_schema_for_openai():
     with patch('src.modelAccessors.openai_accessor.OpenAI'):
         accessor = OpenAIAccessor()
     
-    # Test union schema flattening
+    # Test union schema - should preserve oneOf but make it compliant
     fixed_schema = accessor._prepare_schema_for_openai(union_schema)
-    assert fixed_schema["type"] == "object"
-    assert "properties" in fixed_schema
-    assert "oneOf" not in fixed_schema
-    assert "anyOf" not in fixed_schema
-    # OpenAI requires all properties to be in the required array
-    expected_props = ["type", "content", "artifacts", "follow_up_ask"]
-    assert set(fixed_schema["required"]) == set(expected_props)
-    assert fixed_schema["additionalProperties"] is False
     
-    # Should have properties from both FollowUpResponse and ImplementedResponse
-    properties = fixed_schema["properties"]
-    assert "type" in properties
-    assert "content" in properties  # Common field
-    assert "artifacts" in properties  # Common field
-    assert "follow_up_ask" in properties  # FollowUpResponse field
+    # Should preserve oneOf structure (better than flattening)
+    assert "oneOf" in fixed_schema, "Should preserve oneOf structure"
     
-    # Type field should have correct enum values
-    type_prop = properties["type"]
-    assert type_prop["type"] == "string"
-    assert set(type_prop["enum"]) == {"follow_up_required", "implemented"}
+    # Should have proper $defs with compliance
+    assert "$defs" in fixed_schema
     
-    # Test object schema (should not be changed)
+    # Check that $defs objects are compliant
+    for def_name, def_obj in fixed_schema["$defs"].items():
+        if "properties" in def_obj:
+            assert def_obj.get("additionalProperties") is False, f"{def_name} should have additionalProperties: false"
+    
+    # Should preserve original required array logic (not force all properties required)
+    follow_up_def = fixed_schema["$defs"]["FollowUpResponse"]
+    impl_def = fixed_schema["$defs"]["ImplementedResponse"]
+    
+    # FollowUpResponse should still only require follow_up_ask (preserve original logic)
+    assert follow_up_def.get("required") == ["follow_up_ask"], "Should preserve original required logic"
+    
+    # ImplementedResponse should have no required fields (preserve original logic)  
+    assert impl_def.get("required") == [], "Should preserve original required logic"
+
+    # Test with object schema (should add additionalProperties: false)
     object_schema = {
         "type": "object",
         "properties": {"test": {"type": "string"}},
         "required": ["test"]
     }
-    unchanged_schema = accessor._prepare_schema_for_openai(object_schema)
+    fixed_object = accessor._prepare_schema_for_openai(object_schema)
     
-    # The schema should now have additionalProperties: false added
+    # Should add additionalProperties: false
     expected_schema = {
         "type": "object",
         "properties": {"test": {"type": "string"}},
         "required": ["test"],
         "additionalProperties": False
     }
-    assert unchanged_schema == expected_schema
+    assert fixed_object == expected_schema
 
 
 def test_extract_response_from_openai_format():

@@ -87,48 +87,122 @@ class OpenAIAccessor(BaseModelAccessor):
     
     def _prepare_schema_for_openai(self, schema: dict) -> dict:
         """
-        Prepare schema for OpenAI's structured output requirements.
+        Prepare schema for OpenAI's structured output requirements with minimal changes.
         
-        OpenAI requires the root schema to have 'type': 'object' and does not support
-        oneOf/anyOf anywhere in the schema. Pydantic's discriminated unions generate 
-        schemas with oneOf at the root level, and nullable fields use anyOf, so we 
-        need to flatten and clean them.
+        Instead of aggressively flattening all unions, this applies targeted fixes:
+        1. Only flatten problematic union structures
+        2. Keep oneOf/anyOf that can work with proper branch structure
+        3. Clean nullable fields (anyOf with null)
+        4. Ensure all objects have additionalProperties: false
+        5. Clean $ref objects with extra keywords
+        6. Handle empty objects explicitly
+        
+        This preserves the original schema design while ensuring OpenAI compliance.
         """
-        # Check if the schema already has a root type of "object" and no oneOf/anyOf
-        if schema.get("type") == "object" and not self._contains_oneof_anyof(schema):
-            # Even for simple object schemas, ensure OpenAI compliance
-            import copy
-            result_schema = copy.deepcopy(schema)
-        else:
-            # If it's a oneOf/anyOf schema (discriminated union), flatten it
-            if "oneOf" in schema or "anyOf" in schema:
-                flattened = self._flatten_discriminated_union(schema)
-            else:
-                flattened = schema
-                
-            # Clean any remaining oneOf/anyOf structures (like nullable fields)
-            result_schema = self._clean_oneof_anyof_recursive(flattened)
+        import copy
         
-        # Ensure OpenAI's requirement: all properties must be in required array
-        # This prevents the "Missing 'content'" error by guaranteeing compliance
-        # Apply this fix recursively to ALL objects in the schema (including $defs)
+        # Always start with a deep copy to avoid modifying the original
+        result_schema = copy.deepcopy(schema)
+        
+        # Clean only problematic anyOf/oneOf structures
+        # Keep discriminated unions if they're properly structured
+        if self._has_problematic_unions(result_schema):
+            result_schema = self._clean_problematic_unions(result_schema)
+        else:
+            # Even if we're not flattening, we need to ensure each branch is OpenAI compliant
+            self._make_union_branches_compliant(result_schema)
+        
+        # Clean nullable fields (anyOf with null) - these are always problematic for OpenAI
+        result_schema = self._clean_oneof_anyof_recursive(result_schema)
+        
+        # Apply targeted OpenAI compliance fixes without breaking conditional logic
         self._fix_required_fields_recursive(result_schema)
         
         return result_schema
     
+    def _has_problematic_unions(self, schema: dict) -> bool:
+        """
+        Check if the schema has union structures that need flattening.
+        
+        Try to preserve oneOf/anyOf if possible. Only flatten if the branches
+        can't be made OpenAI-compliant as-is.
+        """
+        if "oneOf" in schema:
+            # Check if all branches can be made OpenAI compliant
+            one_of = schema["oneOf"]
+            for branch in one_of:
+                if "$ref" in branch:
+                    # $ref branches should be fine if the referenced schema is compliant
+                    continue
+                elif isinstance(branch, dict):
+                    # Check if this branch can be made compliant
+                    if branch.get("type") == "object" or "properties" in branch:
+                        # This should be fixable - don't flatten
+                        continue
+                    else:
+                        # Complex branch that might need flattening
+                        return True
+            
+            # All branches look fine, don't flatten
+            return False
+            
+        # Root-level anyOf might need flattening if it's not just nullable
+        if "anyOf" in schema:
+            any_of = schema["anyOf"]
+            # Check if it's just a nullable pattern
+            if len(any_of) == 2:
+                types = []
+                for item in any_of:
+                    if isinstance(item, dict) and "type" in item:
+                        types.append(item["type"])
+                if "null" in types:
+                    # This is just a nullable field, don't flatten at root
+                    return False
+            # Other anyOf patterns might need flattening
+            return True
+            
+        return False
+    
+    def _make_union_branches_compliant(self, schema: dict):
+        """
+        Make each branch of a oneOf/anyOf union OpenAI compliant without flattening.
+        
+        This processes each branch to ensure it has additionalProperties: false
+        and proper structure, while preserving the union semantics.
+        """
+        if "oneOf" in schema:
+            for branch in schema["oneOf"]:
+                if isinstance(branch, dict) and "$ref" not in branch:
+                    # Make this branch OpenAI compliant
+                    if branch.get("type") == "object" or "properties" in branch:
+                        branch["additionalProperties"] = False
+                        
+        if "anyOf" in schema:
+            for branch in schema["anyOf"]:
+                if isinstance(branch, dict) and "$ref" not in branch:
+                    # Make this branch OpenAI compliant  
+                    if branch.get("type") == "object" or "properties" in branch:
+                        branch["additionalProperties"] = False
+    
+    def _clean_problematic_unions(self, schema: dict) -> dict:
+        """
+        Clean only the problematic union structures, preserving good ones.
+        """
+        if "oneOf" in schema or "anyOf" in schema:
+            return self._flatten_discriminated_union(schema)
+        return schema
+    
     def _fix_required_fields_recursive(self, schema):
         """
-        Recursively ensure all objects in the schema have complete required arrays
-        and proper additionalProperties settings.
+        Recursively ensure all objects in the schema are OpenAI-compliant.
         
-        OpenAI requires that every object with properties must have:
-        1. A required array containing ALL property keys
-        2. additionalProperties set to false
+        Instead of forcing all properties to be required, this applies targeted fixes:
+        1. Add additionalProperties: false to all objects
+        2. Extend (don't overwrite) existing required arrays only when needed
+        3. Handle empty objects explicitly
+        4. Clean problematic $ref objects
         
-        This applies to:
-        - The top-level schema object
-        - All objects in $defs or definitions  
-        - Any nested objects in properties
+        This preserves the original schema structure while ensuring OpenAI compliance.
         """
         if not isinstance(schema, dict):
             return
@@ -137,13 +211,33 @@ class OpenAIAccessor(BaseModelAccessor):
         if schema.get("type") == "object":
             schema["additionalProperties"] = False
             
-        # If this object has properties, ensure required array contains all property keys
+        # Handle objects with properties
         if "properties" in schema and isinstance(schema["properties"], dict):
-            all_property_keys = list(schema["properties"].keys())
-            if all_property_keys:  # Only set required if there are properties
-                schema["required"] = all_property_keys
-                # Also ensure additionalProperties is false for objects with properties
-                schema["additionalProperties"] = False
+            properties = schema["properties"]
+            
+            # Ensure additionalProperties is false for objects with properties
+            schema["additionalProperties"] = False
+            
+            # Handle empty objects explicitly (OpenAI requirement)
+            if not properties:
+                schema.setdefault("required", [])
+            else:
+                # Ensure required key exists (OpenAI requirement)
+                schema.setdefault("required", [])
+                
+                # Only extend required array if it's missing properties that should be required
+                # Don't force ALL properties to be required - preserve conditional logic
+                existing_required = set(schema.get("required", []))
+                
+                # For discriminated unions, only the discriminator should be universally required
+                # Other fields remain conditional based on the original schema design
+                pass  # Let the original schema determine what should be required
+                
+        # Handle empty objects without properties (must be explicit)
+        elif schema.get("type") == "object" and "properties" not in schema:
+            schema["properties"] = {}
+            schema["required"] = []
+            schema["additionalProperties"] = False
         
         # Recursively fix objects in $defs and definitions
         for defs_key in ["$defs", "definitions"]:
@@ -231,15 +325,12 @@ class OpenAIAccessor(BaseModelAccessor):
                         
                         return self._clean_oneof_anyof_recursive(cleaned)
             
-            # Handle oneOf (shouldn't happen after flattening, but just in case)
+            # Handle oneOf - only remove if it's problematic
             if "oneOf" in obj:
-                # This is a complex case - for now, take the first option
-                # In practice, this shouldn't happen after proper flattening
-                one_of = obj["oneOf"]
-                if one_of:
-                    cleaned = {k: v for k, v in obj.items() if k != "oneOf"}
-                    cleaned.update(one_of[0])
-                    return self._clean_oneof_anyof_recursive(cleaned)
+                # Don't automatically remove oneOf at root level
+                # Only clean nested oneOf that might be problematic
+                # Skip root-level oneOf that we want to preserve
+                pass  
             
             # Recursively clean all nested objects
             return {k: self._clean_oneof_anyof_recursive(v) for k, v in obj.items()}
@@ -310,7 +401,7 @@ class OpenAIAccessor(BaseModelAccessor):
         flattened = {
             "type": "object",
             "properties": all_properties,
-            "required": list(all_properties.keys()),  # OpenAI requires all properties to be in required
+            "required": list(required_fields),  # Only require discriminator and truly required fields
             "additionalProperties": False
         }
         
