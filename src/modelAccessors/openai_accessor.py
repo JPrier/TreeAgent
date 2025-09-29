@@ -192,6 +192,13 @@ class OpenAIAccessor(BaseModelAccessor):
             # Ensure required array exists but don't force all properties
             obj.setdefault("required", [])
     
+    def _make_object_compliant(self, obj: dict):
+        """Make a single object OpenAI compliant."""
+        if obj.get("type") == "object" or "properties" in obj:
+            obj["additionalProperties"] = False
+            # Ensure required array exists but don't force all properties
+            obj.setdefault("required", [])
+    
     def _clean_problematic_unions(self, schema: dict) -> dict:
         """
         Clean only the problematic union structures, preserving good ones.
