@@ -500,11 +500,11 @@ def test_additional_properties_recursive_fix():
 
 
 def test_recursive_required_array_fix():
-    """Test that nested objects in $defs also get complete required arrays."""
+    """Test that nested objects in $defs get proper OpenAI compliance without breaking schema design."""
     with patch('src.modelAccessors.openai_accessor.OpenAI'):
         accessor = OpenAIAccessor()
 
-    # Create a schema with nested objects that have incomplete required arrays
+    # Create a schema with nested objects that need OpenAI compliance
     schema_with_nested_issues = {
         "type": "object",
         "properties": {
@@ -519,7 +519,7 @@ def test_recursive_required_array_fix():
                     "prop2": {"type": "number"},
                     "prop3": {"type": "boolean"}
                 },
-                "required": ["prop1"]  # Missing prop2 and prop3
+                "required": ["prop1"]  # Should preserve original design, just add additionalProperties
             },
             "EmptyRequiredObject": {
                 "type": "object", 
@@ -527,19 +527,22 @@ def test_recursive_required_array_fix():
                     "field_a": {"type": "string"},
                     "field_b": {"type": "array"}
                 }
-                # No required array at all
+                # No required array - should add empty one, not force all props required
             }
         }
     }
 
     fixed_schema = accessor._prepare_schema_for_openai(schema_with_nested_issues)
     
-    # Check that nested objects now have complete required arrays
+    # Check that nested objects are now OpenAI compliant but preserve original design
     incomplete_obj = fixed_schema["$defs"]["IncompleteObject"]
-    assert set(incomplete_obj["required"]) == {"prop1", "prop2", "prop3"}
+    assert incomplete_obj.get("additionalProperties") is False, "Should have additionalProperties: false"
+    assert incomplete_obj["required"] == ["prop1"], "Should preserve original required array"
     
     empty_req_obj = fixed_schema["$defs"]["EmptyRequiredObject"] 
-    assert set(empty_req_obj["required"]) == {"field_a", "field_b"}
+    assert empty_req_obj.get("additionalProperties") is False, "Should have additionalProperties: false"
+    assert "required" in empty_req_obj, "Should have required array"
+    assert empty_req_obj["required"] == [], "Should have empty required array, not force all props"
     
     # Verify top level is still correct
     assert set(fixed_schema["required"]) == {"main_field"}
