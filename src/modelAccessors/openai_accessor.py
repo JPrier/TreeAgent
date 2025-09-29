@@ -156,9 +156,38 @@ class OpenAIAccessor(BaseModelAccessor):
             for prop_schema in schema["properties"].values():
                 self._fix_required_fields_recursive(prop_schema)
         
+        # Fix $ref objects that have additional keywords (OpenAI doesn't allow this)
+        self._clean_ref_objects_recursive(schema)
+        
         # Recursively fix array item schemas
         if "items" in schema and isinstance(schema["items"], dict):
             self._fix_required_fields_recursive(schema["items"])
+
+    def _clean_ref_objects_recursive(self, schema):
+        """
+        Recursively clean $ref objects that have additional keywords.
+        
+        OpenAI's strict validation doesn't allow $ref to be combined with other keywords
+        like 'default', 'title', etc. This removes such keywords from $ref objects.
+        """
+        if not isinstance(schema, dict):
+            return
+            
+        # If this object has $ref, remove all other keywords except $ref
+        if "$ref" in schema:
+            ref_value = schema["$ref"]
+            schema.clear()
+            schema["$ref"] = ref_value
+            return  # Don't recurse into a pure $ref object
+        
+        # Recursively clean nested structures
+        for key, value in list(schema.items()):
+            if isinstance(value, dict):
+                self._clean_ref_objects_recursive(value)
+            elif isinstance(value, list):
+                for item in value:
+                    if isinstance(item, dict):
+                        self._clean_ref_objects_recursive(item)
 
     def _contains_oneof_anyof(self, obj) -> bool:
         """Recursively check if an object contains oneOf or anyOf."""

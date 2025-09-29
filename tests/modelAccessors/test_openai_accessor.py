@@ -360,6 +360,69 @@ def test_openai_required_array_compliance():
     assert unchanged_schema["properties"] == complete_schema["properties"]
 
 
+def test_ref_objects_cleaning():
+    """Test that $ref objects with additional keywords are cleaned for OpenAI compliance."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Create a schema with problematic $ref objects
+    schema_with_problematic_refs = {
+        "type": "object",
+        "properties": {
+            "field_with_ref": {
+                "$ref": "#/$defs/SomeType",
+                "default": "some_default",
+                "title": "Some Title"
+            },
+            "normal_field": {"type": "string"}
+        },
+        "required": ["field_with_ref", "normal_field"],
+        "$defs": {
+            "SomeType": {
+                "type": "string",
+                "enum": ["value1", "value2"]
+            },
+            "AnotherType": {
+                "properties": {
+                    "nested_ref": {
+                        "$ref": "#/$defs/SomeType", 
+                        "description": "This should be cleaned"
+                    }
+                }
+            }
+        }
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(schema_with_problematic_refs)
+    
+    # Function to find $ref objects with extra keywords
+    def find_problematic_refs(obj, path=""):
+        issues = []
+        if isinstance(obj, dict):
+            if "$ref" in obj and len(obj) > 1:
+                other_keys = [k for k in obj.keys() if k != "$ref"]
+                issues.append(f"{path}: $ref with extra keys {other_keys}")
+            
+            for key, value in obj.items():
+                if isinstance(value, dict):
+                    issues.extend(find_problematic_refs(value, f"{path}.{key}"))
+                elif isinstance(value, list):
+                    for i, item in enumerate(value):
+                        if isinstance(item, dict):
+                            issues.extend(find_problematic_refs(item, f"{path}.{key}[{i}]"))
+        return issues
+    
+    issues = find_problematic_refs(fixed_schema)
+    assert len(issues) == 0, f"Found problematic $ref objects: {issues}"
+    
+    # Verify that $ref objects are now clean
+    field_with_ref = fixed_schema["properties"]["field_with_ref"]
+    assert field_with_ref == {"$ref": "#/$defs/SomeType"}, f"Expected clean $ref, got {field_with_ref}"
+    
+    nested_ref = fixed_schema["$defs"]["AnotherType"]["properties"]["nested_ref"]
+    assert nested_ref == {"$ref": "#/$defs/SomeType"}, f"Expected clean nested $ref, got {nested_ref}"
+
+
 def test_additional_properties_recursive_fix():
     """Test that all objects in schema get additionalProperties: false."""
     with patch('src.modelAccessors.openai_accessor.OpenAI'):
