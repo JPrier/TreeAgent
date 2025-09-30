@@ -1,90 +1,104 @@
-import subprocess
 import json
+import os
 from typing import Any, Dict, Optional
 
-from pydantic import BaseModel
+import requests
 
 from src.modelAccessors.data.tool import Tool
 
 
 class GitHubIssueManager:
-    """Manager for GitHub issue operations using gh CLI."""
+    """Manager for GitHub issue operations using GitHub API."""
     
     @staticmethod
-    def _run_gh_command(cmd: list[str]) -> str:
-        """Run a gh CLI command and return the output."""
-        try:
-            result = subprocess.run(
-                ['gh'] + cmd,
-                capture_output=True,
-                text=True,
-                check=True
-            )
-            return result.stdout.strip()
-        except subprocess.CalledProcessError as e:
-            raise RuntimeError(f"GitHub CLI command failed: {e.stderr}") from e
-        except FileNotFoundError:
+    def _get_api_headers() -> Dict[str, str]:
+        """Get headers for GitHub API requests."""
+        token = os.environ.get("GITHUB_TOKEN") or os.environ.get("GH_TOKEN")
+        if not token:
             raise RuntimeError(
-                "GitHub CLI (gh) is not available. Please install it and authenticate with 'gh auth login'. "
-                "See https://github.com/cli/cli#installation for installation instructions."
-            ) from None
+                "GitHub token not found. Set GITHUB_TOKEN or GH_TOKEN environment variable. "
+                "You can create a token at https://github.com/settings/tokens"
+            )
+        
+        return {
+            "Authorization": f"token {token}",
+            "Accept": "application/vnd.github.v3+json",
+            "Content-Type": "application/json"
+        }
+    
+    @staticmethod
+    def _make_api_request(method: str, url: str, data: Optional[Dict] = None) -> Dict[str, Any]:
+        """Make a request to the GitHub API."""
+        headers = GitHubIssueManager._get_api_headers()
+        
+        try:
+            if method.upper() == "GET":
+                response = requests.get(url, headers=headers)
+            elif method.upper() == "POST":
+                response = requests.post(url, headers=headers, json=data)
+            elif method.upper() == "PATCH":
+                response = requests.patch(url, headers=headers, json=data)
+            else:
+                raise ValueError(f"Unsupported HTTP method: {method}")
+            
+            response.raise_for_status()
+            return response.json() if response.content else {}
+        except requests.exceptions.RequestException as e:
+            raise RuntimeError(f"GitHub API request failed: {e}") from e
 
 
 def get_issue(repo: str, issue_number: int) -> Dict[str, Any]:
     """Get details of a specific GitHub issue."""
-    cmd = ['issue', 'view', str(issue_number), '--repo', repo, '--json', 'title,body,state,author,labels,assignees']
-    output = GitHubIssueManager._run_gh_command(cmd)
-    return json.loads(output)
+    url = f"https://api.github.com/repos/{repo}/issues/{issue_number}"
+    return GitHubIssueManager._make_api_request("GET", url)
 
 
 def create_issue(repo: str, title: str, body: str = "", labels: Optional[list[str]] = None) -> Dict[str, Any]:
     """Create a new GitHub issue."""
-    cmd = ['issue', 'create', '--repo', repo, '--title', title, '--body', body]
-    
+    url = f"https://api.github.com/repos/{repo}/issues"
+    data = {
+        "title": title,
+        "body": body
+    }
     if labels:
-        cmd.extend(['--label', ','.join(labels)])
+        data["labels"] = labels
     
-    output = GitHubIssueManager._run_gh_command(cmd)
-    # Extract issue URL/number from output
-    issue_url = output.strip()
-    return {"url": issue_url, "created": True}
+    return GitHubIssueManager._make_api_request("POST", url, data)
 
 
-def update_issue(repo: str, issue_number: int, title: Optional[str] = None, body: Optional[str] = None) -> Dict[str, Any]:
+def update_issue(repo: str, issue_number: int, title: Optional[str] = None, body: Optional[str] = None, state: Optional[str] = None) -> Dict[str, Any]:
     """Update a GitHub issue."""
-    cmd = ['issue', 'edit', str(issue_number), '--repo', repo]
+    url = f"https://api.github.com/repos/{repo}/issues/{issue_number}"
+    data = {}
     
     if title:
-        cmd.extend(['--title', title])
+        data["title"] = title
     if body:
-        cmd.extend(['--body', body])
+        data["body"] = body
+    if state:
+        data["state"] = state
     
-    GitHubIssueManager._run_gh_command(cmd)
-    return {"updated": True, "issue_number": issue_number}
+    return GitHubIssueManager._make_api_request("PATCH", url, data)
 
 
 def comment_on_issue(repo: str, issue_number: int, comment: str) -> Dict[str, Any]:
     """Add a comment to a GitHub issue."""
-    cmd = ['issue', 'comment', str(issue_number), '--repo', repo, '--body', comment]
-    GitHubIssueManager._run_gh_command(cmd)
-    return {"commented": True, "issue_number": issue_number}
+    url = f"https://api.github.com/repos/{repo}/issues/{issue_number}/comments"
+    data = {"body": comment}
+    return GitHubIssueManager._make_api_request("POST", url, data)
 
 
 def list_issues(repo: str, state: str = "open", limit: int = 10) -> list[Dict[str, Any]]:
     """List GitHub issues."""
-    cmd = ['issue', 'list', '--repo', repo, '--state', state, '--limit', str(limit), '--json', 'number,title,state,author,labels']
-    output = GitHubIssueManager._run_gh_command(cmd)
-    return json.loads(output)
+    url = f"https://api.github.com/repos/{repo}/issues?state={state}&per_page={limit}"
+    result = GitHubIssueManager._make_api_request("GET", url)
+    # GitHub API returns a list directly
+    return result if isinstance(result, list) else [result]
 
 
-def close_issue(repo: str, issue_number: int, reason: Optional[str] = None) -> Dict[str, Any]:
+def close_issue(repo: str, issue_number: int) -> Dict[str, Any]:
     """Close a GitHub issue."""
-    cmd = ['issue', 'close', str(issue_number), '--repo', repo]
-    if reason:
-        cmd.extend(['--reason', reason])
-    
-    GitHubIssueManager._run_gh_command(cmd)
-    return {"closed": True, "issue_number": issue_number}
+    return update_issue(repo, issue_number, state="closed")
 
 
 # Tool definitions for use with model accessors
@@ -115,7 +129,8 @@ UPDATE_ISSUE_TOOL = Tool(
         "repo": {"type": "string", "description": "Repository in format 'owner/repo'"},
         "issue_number": {"type": "integer", "description": "Issue number"},
         "title": {"type": "string", "description": "New title (optional)"},
-        "body": {"type": "string", "description": "New body/description (optional)"}
+        "body": {"type": "string", "description": "New body/description (optional)"},
+        "state": {"type": "string", "enum": ["open", "closed"], "description": "New state (optional)"}
     }
 )
 
@@ -144,8 +159,7 @@ CLOSE_ISSUE_TOOL = Tool(
     description="Close a GitHub issue",
     parameters={
         "repo": {"type": "string", "description": "Repository in format 'owner/repo'"},
-        "issue_number": {"type": "integer", "description": "Issue number"},
-        "reason": {"type": "string", "enum": ["completed", "not_planned"], "description": "Reason for closing"}
+        "issue_number": {"type": "integer", "description": "Issue number"}
     }
 )
 

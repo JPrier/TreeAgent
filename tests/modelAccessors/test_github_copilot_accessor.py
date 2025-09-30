@@ -30,21 +30,26 @@ def test_supports_tools():
         assert accessor.supports_tools("unsupported-model") is False
 
 
-def test_format_tools_for_prompt():
-    """Test _format_tools_for_prompt method."""
+def test_extract_issue_id_from_url():
+    """Test _extract_issue_id with URL format."""
     with patch('subprocess.run') as mock_run:
         mock_run.return_value.returncode = 0
         accessor = GitHubCopilotAccessor()
         
-        from src.modelAccessors.data.tool import Tool
-        tools = [
-            Tool(name="test_tool", description="Test tool", parameters={"param1": {"type": "string"}}),
-            Tool(name="another_tool", description="Another tool", parameters={"param2": {"type": "int"}})
-        ]
+        output = "Created issue: https://github.com/owner/repo/issues/123"
+        issue_id = accessor._extract_issue_id(output)
+        assert issue_id == "123"
+
+
+def test_extract_issue_id_from_hash():
+    """Test _extract_issue_id with # format."""
+    with patch('subprocess.run') as mock_run:
+        mock_run.return_value.returncode = 0
+        accessor = GitHubCopilotAccessor()
         
-        result = accessor._format_tools_for_prompt(tools)
-        assert "test_tool: Test tool [Parameters: param1]" in result
-        assert "another_tool: Another tool [Parameters: param2]" in result
+        output = "Issue #456 created"
+        issue_id = accessor._extract_issue_id(output)
+        assert issue_id == "456"
 
 
 def test_call_model_no_gh():
@@ -59,19 +64,41 @@ def test_call_model_no_gh():
 @patch('subprocess.run')
 def test_call_model_success(mock_run):
     """Test successful call_model execution."""
-    # Setup mock for gh version check
+    # Setup mock for gh version check and agent-task create
     mock_run.side_effect = [
         MagicMock(returncode=0),  # gh version check
-        MagicMock(stdout='{"type": "implemented", "content": "test response", "artifacts": []}')  # gh copilot call
+        MagicMock(stdout='Created issue: https://github.com/owner/repo/issues/42', returncode=0)  # gh copilot agent-task
     ]
     
     accessor = GitHubCopilotAccessor()
     
     # Mock TypeAdapter
     mock_adapter = MagicMock()
-    mock_adapter.validate_python.return_value = {"type": "implemented", "content": "test response"}
+    mock_response = MagicMock()
+    mock_adapter.validate_python.return_value = mock_response
     
     result = accessor.call_model("test prompt", adapter=mock_adapter, schema={})
     
-    mock_adapter.validate_python.assert_called_once()
-    assert mock_run.call_count == 2  # version check + actual call
+    # Verify the adapter was called with correct data
+    call_args = mock_adapter.validate_python.call_args[0][0]
+    assert call_args["type"] == "implemented"
+    assert "42" in call_args["content"]
+    assert "42" in call_args["artifacts"]
+    assert result == mock_response
+
+
+@patch('subprocess.run')
+def test_call_model_failure(mock_run):
+    """Test call_model when gh copilot command fails."""
+    from subprocess import CalledProcessError
+    
+    # Setup mock for gh version check succeeds, agent-task fails
+    mock_run.side_effect = [
+        MagicMock(returncode=0),  # gh version check
+        CalledProcessError(1, 'gh', stderr='Extension not found')  # gh copilot agent-task fails
+    ]
+    
+    accessor = GitHubCopilotAccessor()
+    
+    with pytest.raises(RuntimeError, match="GitHub Copilot agent-task creation failed"):
+        accessor.call_model("test prompt", adapter=MagicMock(), schema={})
