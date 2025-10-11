@@ -467,7 +467,7 @@ def test_additional_properties_recursive_fix():
         if isinstance(obj, dict):
             # Check if this should have additionalProperties
             if obj.get("type") == "object" or "properties" in obj:
-                if not (obj.get("additionalProperties") is False):
+                if obj.get("additionalProperties") is not False:
                     issues.append(f"{path}: missing or incorrect additionalProperties")
             
             # Recurse into nested structures
