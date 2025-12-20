@@ -13,7 +13,10 @@ impl WorkspaceRuntime {
     }
 
     pub fn summary(&self) -> String {
-        format!("TreeAgent runtime initialized for graph '{}'", self.graph_spec.name())
+        format!(
+            "TreeAgent runtime initialized for graph '{}'",
+            self.graph_spec.name()
+        )
     }
 
     pub fn print_summary(&self) -> anyhow::Result<()> {
