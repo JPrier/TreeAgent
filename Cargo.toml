@@ -1,0 +1,17 @@
+[workspace]
+members = [
+    "crates/treeagent",
+    "crates/treeagentc",
+    "crates/treeagent-runtime",
+    "crates/treeagent-model",
+]
+resolver = "2"
+
+[workspace.package]
+authors = ["TreeAgent Developers"]
+edition = "2021"
+license = "MIT"
+version = "0.1.0"
+
+[workspace.dependencies]
+anyhow = "1.0"
