@@ -1,6 +1,15 @@
-.PHONY: swe-sanity swe-one
+.PHONY: swe-build swe-check swe-test swe-sanity swe-one
 INSTANCE ?= sympy__sympy-20590
 DATASET ?= princeton-nlp/SWE-bench_Lite
+
+swe-build:
+	cargo build --workspace
+
+swe-check:
+	cargo check --workspace
+
+swe-test:
+	cargo test --workspace
 
 swe-sanity:
 	python -m pip install -q swebench
