@@ -124,8 +124,8 @@ def test_tool_support():
 
 
 def test_prepare_schema_for_openai():
-    """Test that discriminated union schemas are properly flattened for OpenAI compatibility."""
-    # Test with discriminated union (should be flattened)
+    """Test that discriminated union schemas are made OpenAI-compliant while preserving structure."""
+    # Test with discriminated union (should preserve oneOf structure, not flatten)
     adapter = cast(TypeAdapter[ModelResponse], TypeAdapter(ClarifierResponse))
     union_schema = adapter.json_schema()
     
@@ -133,37 +133,46 @@ def test_prepare_schema_for_openai():
     with patch('src.modelAccessors.openai_accessor.OpenAI'):
         accessor = OpenAIAccessor()
     
-    # Test union schema flattening
+    # Test union schema - should preserve oneOf but make it compliant
     fixed_schema = accessor._prepare_schema_for_openai(union_schema)
-    assert fixed_schema["type"] == "object"
-    assert "properties" in fixed_schema
-    assert "oneOf" not in fixed_schema
-    assert "anyOf" not in fixed_schema
-    # OpenAI requires all properties to be in the required array
-    expected_props = ["type", "content", "artifacts", "follow_up_ask"]
-    assert set(fixed_schema["required"]) == set(expected_props)
-    assert fixed_schema["additionalProperties"] is False
     
-    # Should have properties from both FollowUpResponse and ImplementedResponse
-    properties = fixed_schema["properties"]
-    assert "type" in properties
-    assert "content" in properties  # Common field
-    assert "artifacts" in properties  # Common field
-    assert "follow_up_ask" in properties  # FollowUpResponse field
+    # Should preserve oneOf structure (better than flattening)
+    assert "oneOf" in fixed_schema, "Should preserve oneOf structure"
     
-    # Type field should have correct enum values
-    type_prop = properties["type"]
-    assert type_prop["type"] == "string"
-    assert set(type_prop["enum"]) == {"follow_up_required", "implemented"}
+    # Should have proper $defs with compliance
+    assert "$defs" in fixed_schema
     
-    # Test object schema (should not be changed)
+    # Check that $defs objects are compliant
+    for def_name, def_obj in fixed_schema["$defs"].items():
+        if "properties" in def_obj:
+            assert def_obj.get("additionalProperties") is False, f"{def_name} should have additionalProperties: false"
+    
+    # Should preserve original required array logic (not force all properties required)
+    follow_up_def = fixed_schema["$defs"]["FollowUpResponse"]
+    impl_def = fixed_schema["$defs"]["ImplementedResponse"]
+    
+    # FollowUpResponse should still only require follow_up_ask (preserve original logic)
+    assert follow_up_def.get("required") == ["follow_up_ask"], "Should preserve original required logic"
+    
+    # ImplementedResponse should have no required fields (preserve original logic)  
+    assert impl_def.get("required") == [], "Should preserve original required logic"
+
+    # Test with object schema (should add additionalProperties: false)
     object_schema = {
         "type": "object",
         "properties": {"test": {"type": "string"}},
         "required": ["test"]
     }
-    unchanged_schema = accessor._prepare_schema_for_openai(object_schema)
-    assert unchanged_schema == object_schema
+    fixed_object = accessor._prepare_schema_for_openai(object_schema)
+    
+    # Should add additionalProperties: false
+    expected_schema = {
+        "type": "object",
+        "properties": {"test": {"type": "string"}},
+        "required": ["test"],
+        "additionalProperties": False
+    }
+    assert fixed_object == expected_schema
 
 
 def test_extract_response_from_openai_format():
@@ -290,3 +299,250 @@ def test_full_modelresponse_compatibility():
     assert has_defs
     defs_key = next(key for key in openai_schema.keys() if key.endswith("defs"))
     assert "Task" in openai_schema[defs_key]
+
+
+def test_openai_required_array_compliance():
+    """Test that all properties are included in required array for OpenAI compliance."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Test case 1: Object schema missing some required properties
+    incomplete_schema = {
+        "type": "object",
+        "properties": {
+            "type": {"type": "string", "enum": ["test"]},
+            "content": {"type": "string"},
+            "optional_field": {"type": "string", "default": "default"}
+        },
+        "required": ["type"],  # Missing content and optional_field
+        "additionalProperties": False
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(incomplete_schema)
+    
+    # All properties should now be in required array
+    properties = set(fixed_schema["properties"].keys())
+    required = set(fixed_schema["required"])
+    assert properties == required, f"Properties {properties} != Required {required}"
+    assert "content" in fixed_schema["required"], "content should be in required array"
+
+    # Test case 2: Empty required array  
+    empty_required_schema = {
+        "type": "object",
+        "properties": {
+            "field1": {"type": "string"},
+            "field2": {"type": "number"}
+        },
+        "required": [],
+        "additionalProperties": False
+    }
+
+    fixed_empty = accessor._prepare_schema_for_openai(empty_required_schema)
+    
+    # All properties should be added to required
+    assert len(fixed_empty["required"]) == len(fixed_empty["properties"])
+    assert set(fixed_empty["required"]) == set(fixed_empty["properties"].keys())
+
+    # Test case 3: Schema that already has all properties in required (should be unchanged)
+    complete_schema = {
+        "type": "object", 
+        "properties": {
+            "prop1": {"type": "string"},
+            "prop2": {"type": "boolean"}
+        },
+        "required": ["prop1", "prop2"],
+        "additionalProperties": False
+    }
+
+    unchanged_schema = accessor._prepare_schema_for_openai(complete_schema)
+    
+    # Should be identical (except potentially reordered)
+    assert set(unchanged_schema["required"]) == {"prop1", "prop2"}
+    assert unchanged_schema["properties"] == complete_schema["properties"]
+
+
+def test_ref_objects_cleaning():
+    """Test that $ref objects with additional keywords are cleaned for OpenAI compliance."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Create a schema with problematic $ref objects
+    schema_with_problematic_refs = {
+        "type": "object",
+        "properties": {
+            "field_with_ref": {
+                "$ref": "#/$defs/SomeType",
+                "default": "some_default",
+                "title": "Some Title"
+            },
+            "normal_field": {"type": "string"}
+        },
+        "required": ["field_with_ref", "normal_field"],
+        "$defs": {
+            "SomeType": {
+                "type": "string",
+                "enum": ["value1", "value2"]
+            },
+            "AnotherType": {
+                "properties": {
+                    "nested_ref": {
+                        "$ref": "#/$defs/SomeType", 
+                        "description": "This should be cleaned"
+                    }
+                }
+            }
+        }
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(schema_with_problematic_refs)
+    
+    # Function to find $ref objects with extra keywords
+    def find_problematic_refs(obj, path=""):
+        issues = []
+        if isinstance(obj, dict):
+            if "$ref" in obj and len(obj) > 1:
+                other_keys = [k for k in obj.keys() if k != "$ref"]
+                issues.append(f"{path}: $ref with extra keys {other_keys}")
+            
+            for key, value in obj.items():
+                if isinstance(value, dict):
+                    issues.extend(find_problematic_refs(value, f"{path}.{key}"))
+                elif isinstance(value, list):
+                    for i, item in enumerate(value):
+                        if isinstance(item, dict):
+                            issues.extend(find_problematic_refs(item, f"{path}.{key}[{i}]"))
+        return issues
+    
+    issues = find_problematic_refs(fixed_schema)
+    assert len(issues) == 0, f"Found problematic $ref objects: {issues}"
+    
+    # Verify that $ref objects are now clean
+    field_with_ref = fixed_schema["properties"]["field_with_ref"]
+    assert field_with_ref == {"$ref": "#/$defs/SomeType"}, f"Expected clean $ref, got {field_with_ref}"
+    
+    nested_ref = fixed_schema["$defs"]["AnotherType"]["properties"]["nested_ref"]
+    assert nested_ref == {"$ref": "#/$defs/SomeType"}, f"Expected clean nested $ref, got {nested_ref}"
+
+
+def test_additional_properties_recursive_fix():
+    """Test that all objects in schema get additionalProperties: false."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Create a schema with nested objects missing additionalProperties
+    schema_missing_additional_props = {
+        "type": "object",
+        "properties": {
+            "main_field": {"type": "string"}
+        },
+        "required": ["main_field"],
+        "$defs": {
+            "ObjectWithoutAdditionalProps": {
+                "type": "object",
+                "properties": {
+                    "prop1": {"type": "string"},
+                    "nested_object": {
+                        "type": "object",
+                        "properties": {
+                            "nested_prop": {"type": "number"}
+                        }
+                    }
+                },
+                "required": ["prop1"]
+            },
+            "AnotherObject": {
+                "properties": {
+                    "field_a": {"type": "string"}
+                }
+                # No type specified, but has properties
+            }
+        }
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(schema_missing_additional_props)
+    
+    # Function to recursively check all objects have additionalProperties: false
+    def check_additional_properties(obj, path=""):
+        issues = []
+        if isinstance(obj, dict):
+            # Check if this should have additionalProperties
+            if obj.get("type") == "object" or "properties" in obj:
+                if obj.get("additionalProperties") is not False:
+                    issues.append(f"{path}: missing or incorrect additionalProperties")
+            
+            # Recurse into nested structures
+            for key, value in obj.items():
+                if key in ["$defs", "definitions"] and isinstance(value, dict):
+                    for sub_key, sub_value in value.items():
+                        issues.extend(check_additional_properties(sub_value, f"{path}.{key}.{sub_key}"))
+                elif key == "properties" and isinstance(value, dict):
+                    for prop_key, prop_value in value.items():
+                        issues.extend(check_additional_properties(prop_value, f"{path}.{key}.{prop_key}"))
+                elif key == "items" and isinstance(value, dict):
+                    issues.extend(check_additional_properties(value, f"{path}.{key}"))
+        
+        return issues
+    
+    issues = check_additional_properties(fixed_schema, "root")
+    assert len(issues) == 0, f"Found additionalProperties issues: {issues}"
+    
+    # Verify specific objects
+    assert fixed_schema["additionalProperties"] is False, "Root should have additionalProperties: false"
+    
+    obj1 = fixed_schema["$defs"]["ObjectWithoutAdditionalProps"]
+    assert obj1["additionalProperties"] is False, "ObjectWithoutAdditionalProps should have additionalProperties: false"
+    
+    nested_obj = obj1["properties"]["nested_object"]
+    assert nested_obj["additionalProperties"] is False, "Nested object should have additionalProperties: false"
+    
+    obj2 = fixed_schema["$defs"]["AnotherObject"]  
+    assert obj2["additionalProperties"] is False, "AnotherObject should have additionalProperties: false"
+
+
+def test_recursive_required_array_fix():
+    """Test that nested objects in $defs get proper OpenAI compliance without breaking schema design."""
+    with patch('src.modelAccessors.openai_accessor.OpenAI'):
+        accessor = OpenAIAccessor()
+
+    # Create a schema with nested objects that need OpenAI compliance
+    schema_with_nested_issues = {
+        "type": "object",
+        "properties": {
+            "main_field": {"type": "string"}
+        },
+        "required": ["main_field"],
+        "$defs": {
+            "IncompleteObject": {
+                "type": "object",
+                "properties": {
+                    "prop1": {"type": "string"},
+                    "prop2": {"type": "number"},
+                    "prop3": {"type": "boolean"}
+                },
+                "required": ["prop1"]  # Should preserve original design, just add additionalProperties
+            },
+            "EmptyRequiredObject": {
+                "type": "object", 
+                "properties": {
+                    "field_a": {"type": "string"},
+                    "field_b": {"type": "array"}
+                }
+                # No required array - should add empty one, not force all props required
+            }
+        }
+    }
+
+    fixed_schema = accessor._prepare_schema_for_openai(schema_with_nested_issues)
+    
+    # Check that nested objects are now OpenAI compliant but preserve original design
+    incomplete_obj = fixed_schema["$defs"]["IncompleteObject"]
+    assert incomplete_obj.get("additionalProperties") is False, "Should have additionalProperties: false"
+    assert incomplete_obj["required"] == ["prop1"], "Should preserve original required array"
+    
+    empty_req_obj = fixed_schema["$defs"]["EmptyRequiredObject"] 
+    assert empty_req_obj.get("additionalProperties") is False, "Should have additionalProperties: false"
+    assert "required" in empty_req_obj, "Should have required array"
+    assert empty_req_obj["required"] == [], "Should have empty required array, not force all props"
+    
+    # Verify top level is still correct
+    assert set(fixed_schema["required"]) == {"main_field"}
