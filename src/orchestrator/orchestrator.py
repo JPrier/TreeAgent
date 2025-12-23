@@ -29,6 +29,7 @@ from src.dataManagement.project_manager import (
 from src.modelAccessors.base_accessor import BaseModelAccessor
 from src.modelAccessors.openai_accessor import OpenAIAccessor
 from src.modelAccessors.anthropic_accessor import AnthropicAccessor
+from src.modelAccessors.github_copilot_accessor import GitHubCopilotAccessor
 from src.modelAccessors.mock_accessor import MockAccessor
 from src.agentNodes.clarifier import Clarifier
 from src.agentNodes.hld_designer import HLDDesigner
@@ -126,6 +127,8 @@ class AgentOrchestrator:
                 return OpenAIAccessor()
             case AccessorType.ANTHROPIC:
                 return AnthropicAccessor()
+            case AccessorType.GITHUB_COPILOT:
+                return GitHubCopilotAccessor()
             case AccessorType.MOCK:
                 return MockAccessor()
             case _:
